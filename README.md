@@ -70,9 +70,13 @@ shared/    DTOs, enums, and types shared across packages
 
 ## AI usage
 
-Built with Claude (Anthropic) and GitHub Copilot throughout. AI accelerated: initial NestJS module scaffolding, TypeORM entity/migration boilerplate, React component shells, test suite generation, and the Gemini extraction integration. The output was treated as a first draft — not merged blindly.
+Used Claude and GitHub Copilot for scaffolding: NestJS modules, TypeORM boilerplate, React shells, test generation, and the Gemini extraction integration. All output reviewed before merging.
 
-Three specific corrections where AI output was wrong and I overrode it: (1) the seed script created `admin@example.com` with `role: 'user'`, so the JWT carried the wrong role and all admin API calls returned 403 — caught and fixed manually; (2) the report list mapper was called as `reports.map(mapReport)`, which passes the array index as the optional `totals?` parameter via JavaScript's implicit `(item, index, array)` callback signature — `0 ?? buildTotals(report)` short-circuits on the falsy `0`, producing `$NaN` amounts on every report; (3) the post-login redirect always navigated to `/` regardless of role, so admins landed on the user dashboard instead of `/admin`.
+Three bugs I caught and fixed:
+
+- **Wrong seed role** — `admin@example.com` was seeded with `role: 'user'`, so the JWT carried the wrong role and every admin request returned 403.
+- **`$NaN` report totals** — `reports.map(mapReport)` passes the array index as the optional `totals?` argument. `0 ?? buildTotals(report)` short-circuits on `0`, so all totals rendered as `$NaN`. Fixed with `reports.map((r) => mapReport(r))`.
+- **Wrong post-login redirect** — redirect always went to `/`, so admins landed on the user dashboard. Fixed by reading the role from the JWT and routing to `/admin`.
 
 ---
 
