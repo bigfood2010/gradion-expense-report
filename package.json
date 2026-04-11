@@ -1,0 +1,25 @@
+{
+  "name": "gradion-assessment",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter \"./shared\" build && pnpm --parallel --if-present --filter \"./backend\" --filter \"./client\" --filter \"./shared\" dev",
+    "lint": "pnpm --if-present --filter \"./backend\" --filter \"./client\" --filter \"./shared\" lint && pnpm exec prettier --check .",
+    "build": "pnpm --filter \"./shared\" build && pnpm --if-present --filter \"./backend\" --filter \"./client\" build",
+    "seed": "pnpm --filter \"./backend\" seed",
+    "test": "pnpm --if-present --filter \"./shared\" test && pnpm --if-present --filter \"./backend\" --filter \"./client\" test",
+    "test:backend": "pnpm --filter \"./backend\" test",
+    "test:client": "pnpm --filter \"./client\" test",
+    "format": "prettier --write .",
+    "start": "pnpm --filter backend start"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "typescript": "^5.8.3"
+  }
+}

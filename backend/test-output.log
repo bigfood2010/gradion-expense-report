@@ -1,0 +1,19 @@
+
+> @gradion/backend@0.0.0 test
+> jest --runInBand --config ./test/jest.config.cjs
+
+PASS backend-tests test/modules/items/items.controller.spec.ts
+PASS backend-tests test/modules/reports/report-persistence.happy-path.spec.ts
+PASS backend-tests test/modules/auth/auth.service.spec.ts
+PASS backend-tests test/infrastructure/persistence/typeorm/persistence-typeorm-options.spec.ts
+PASS backend-tests test/modules/reports/reports.service.spec.ts
+PASS backend-tests test/config/environment.schema.spec.ts
+PASS backend-tests test/modules/auth/guards/roles.guard.spec.ts
+PASS backend-tests test/health/app-health.indicator.spec.ts
+PASS backend-tests test/support/report-workflow.machine.spec.ts
+
+Test Suites: 9 passed, 9 total
+Tests:       31 passed, 31 total
+Snapshots:   0 total
+Time:        2.386 s, estimated 4 s
+Ran all test suites.

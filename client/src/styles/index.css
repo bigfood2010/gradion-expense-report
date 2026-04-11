@@ -1,0 +1,18 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-foreground: var(--color-foreground);
+  --color-muted-foreground: var(--color-foreground-muted);
+  --color-border: var(--color-border);
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--color-primary-contrast);
+  --color-status-rejected-bg: var(--color-status-rejected-bg);
+  --color-status-rejected-text: var(--color-status-rejected-text);
+}
+
+@import './tokens.css';
+@import './base.css';
+@import './utilities.css';
+@import './components.css';

@@ -1,0 +1,53 @@
+{
+  "extends": "../tsconfig.base.json",
+  "ts-node": {
+    "require": ["tsconfig-paths/register"],
+    "compilerOptions": {
+      "module": "CommonJS",
+      "moduleResolution": "Node"
+    }
+  },
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@backend/common": ["src/common/index.ts"],
+      "@backend/common/*": ["src/common/*"],
+      "@backend/context/*": ["src/context/*"],
+      "@backend/config": ["src/config/index.ts"],
+      "@backend/config/*": ["src/config/*"],
+      "@backend/health/*": ["src/health/*"],
+      "@backend/infrastructure/*": ["src/infrastructure/*"],
+      "@backend/modules/*": ["src/modules/*"],
+      "@gradion/shared": ["../shared/src/index.ts"],
+      "@gradion/shared/*": ["../shared/src/*"],
+      "@shared/auth": ["../shared/src/auth/index.ts"],
+      "@shared/auth/*": ["../shared/src/auth/*"],
+      "@shared/common": ["../shared/src/common/index.ts"],
+      "@shared/common/*": ["../shared/src/common/*"],
+      "@shared/enums": ["../shared/src/enums/index.ts"],
+      "@shared/enums/*": ["../shared/src/enums/*"],
+      "@shared/items": ["../shared/src/items/index.ts"],
+      "@shared/items/*": ["../shared/src/items/*"],
+      "@shared/reports": ["../shared/src/reports/index.ts"],
+      "@shared/reports/*": ["../shared/src/reports/*"]
+    },
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "resolvePackageJsonExports": true,
+    "isolatedModules": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "target": "ES2023",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "tsBuildInfoFile": "./.cache/tsconfig.tsbuildinfo",
+    "incremental": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}

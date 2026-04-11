@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gradion_user
+      POSTGRES_PASSWORD: secure_pass
+      POSTGRES_DB: expense_system
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./docker_data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: gradion_minio
+      MINIO_ROOT_PASSWORD: secure_minio_pass
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - ./docker_data/minio:/data
+
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: gradion_minio
+      MINIO_ROOT_PASSWORD: secure_minio_pass
+    entrypoint: /bin/sh
+    command:
+      - -ec
+      - |
+        until mc alias set myminio http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" >/dev/null 2>&1; do
+          echo "waiting for minio..."
+          sleep 2
+        done
+        mc mb --ignore-existing myminio/receipts
+        mc anonymous set download myminio/receipts
+
+  seed:
+    image: node:20-bookworm-slim
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+      - seed-node-modules:/workspace/node_modules
+      - seed-pnpm-store:/pnpm/store
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: gradion_user
+      DB_PASSWORD: secure_pass
+      DB_NAME: expense_system
+      DATABASE_URL: postgresql://gradion_user:secure_pass@postgres:5432/expense_system
+      PNPM_STORE_DIR: /pnpm/store
+    entrypoint: /bin/sh
+    command:
+      - -ec
+      - |
+        corepack enable
+        corepack prepare pnpm@9.15.4 --activate
+        pnpm install --frozen-lockfile --prefer-offline
+        pnpm seed
+    restart: 'no'
+
+volumes:
+  seed-node-modules:
+  seed-pnpm-store:

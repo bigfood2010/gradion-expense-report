@@ -1,0 +1,22 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@client": ["client/src"],
+      "@client/*": ["client/src/*"],
+      "@gradion/shared": ["shared/src/index.ts"],
+      "@gradion/shared/*": ["shared/src/*"],
+      "@shared": ["shared/src/index.ts"],
+      "@shared/*": ["shared/src/*"]
+    },
+    "exactOptionalPropertyTypes": false,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "node", "react", "react-dom"],
+    "noEmit": true
+  },
+  "include": ["src"]
+}

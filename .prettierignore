@@ -1,0 +1,16 @@
+node_modules
+dist
+coverage
+docker_data
+.turbo
+.next
+backend/dist
+client/dist
+shared/dist
+shared/src/**/*.js
+shared/src/**/*.d.ts
+shared/src/**/*.js.map
+quiet-cost-main
+context-layer
+pnpm-lock.yaml
+.DS_Store
