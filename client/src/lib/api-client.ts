@@ -84,16 +84,36 @@ function unwrapEnvelope<TData>(payload: ApiEnvelopeDto<TData> | TData, status: n
   return payload as TData;
 }
 
+/** Paths that must never trigger the unauthorized handler to avoid infinite loops or false logouts. */
+const UNAUTHENTICATED_PATHS = ['/auth/login', '/auth/signup', '/auth/logout'];
+
 export class ApiClient {
+  private unauthorizedHandler?: () => void;
+  /** Prevents multiple concurrent 401s from triggering logout/redirect more than once. */
+  private handlingUnauthorized = false;
+
   constructor(private readonly baseUrl: string) {}
+
+  setUnauthorizedHandler(fn: (() => void) | undefined): void {
+    this.unauthorizedHandler = fn;
+    this.handlingUnauthorized = false;
+  }
 
   async request<TResponse, TBody = undefined>(
     path: string,
     options: RequestOptions<TBody> = {},
   ): Promise<TResponse> {
-    const { body, method = 'GET', query, signal } = options;
+    const { body, method = 'GET', query, signal: callerSignal } = options;
     const isMultipart = typeof FormData !== 'undefined' && body instanceof FormData;
 
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), 30_000);
+
+    const signal = callerSignal
+      ? AbortSignal.any([callerSignal, timeoutController.signal])
+      : timeoutController.signal;
+
+    try {
     const response = await fetch(`${this.baseUrl}${path}${toSearchParams(query)}`, {
       method,
       headers: {
@@ -117,6 +137,15 @@ export class ApiClient {
 
     if (!response.ok) {
       if (
+        response.status === 401 &&
+        !UNAUTHENTICATED_PATHS.some((p) => path.startsWith(p)) &&
+        !this.handlingUnauthorized
+      ) {
+        this.handlingUnauthorized = true;
+        this.unauthorizedHandler?.();
+      }
+
+      if (
         payload &&
         typeof payload === 'object' &&
         'success' in payload &&
@@ -135,6 +164,9 @@ export class ApiClient {
     }
 
     return unwrapEnvelope(payload as ApiEnvelopeDto<TResponse> | TResponse, response.status);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   readonly auth = {
