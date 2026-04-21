@@ -18,7 +18,7 @@ Expense report app with receipt upload, AI extraction, user review, and admin ap
 pnpm install
 cp backend/.env.example backend/.env
 cp client/.env.example client/.env
-docker compose up -d                    # Starts Postgres and MinIO, seeds default accounts
+docker compose up -d                    # Starts Postgres, MinIO, and the demo seed
 pnpm dev
 ```
 
@@ -27,8 +27,9 @@ pnpm dev
 
 ### Seeded Accounts
 
-- **User:** user@example.com / password
-- **Admin:** admin@example.com / password
+- **User:** david@openai.com / Password1!
+- **User:** sarah@openai.com / Password1!
+- **Admin:** admin@openai.com / password1!
 
 ### AI Receipt Extraction
 
