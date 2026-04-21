@@ -15,6 +15,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 
+import { CursorBasedQueryDto } from '@backend/modules/reports/dto/cursor-based-query.dto';
 import { CreateExpenseReportDto } from '@backend/modules/reports/dto/create-expense-report.dto';
 import { ListExpenseReportsQueryDto } from '@backend/modules/reports/dto/list-expense-reports.query.dto';
 import { UpdateExpenseReportDto } from '@backend/modules/reports/dto/update-expense-report.dto';
@@ -46,6 +47,20 @@ export class ReportsController {
   ) {
     const user = getAuthenticatedUser(request);
     return this.reportsService.listOwnReports(user.id, query);
+  }
+
+  @Get('infinite')
+  async listOwnReportsInfinite(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: CursorBasedQueryDto,
+  ) {
+    const user = getAuthenticatedUser(request);
+    return this.reportsService.listOwnReportsWithCursor(
+      user.id,
+      query.cursor,
+      query.limit,
+      query.status,
+    );
   }
 
   @Get('summary')
@@ -120,6 +135,15 @@ export class AdminReportsController {
   ) {
     getAuthenticatedUserWithRole(request, UserRole.ADMIN);
     return this.reportsService.listAllReports(query);
+  }
+
+  @Get('infinite')
+  async listAllReportsInfinite(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: CursorBasedQueryDto,
+  ) {
+    getAuthenticatedUserWithRole(request, UserRole.ADMIN);
+    return this.reportsService.listAllReportsWithCursor(query.cursor, query.limit, query.status);
   }
 
   @Patch(':reportId/approve')

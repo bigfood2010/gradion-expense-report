@@ -21,3 +21,9 @@ quiet-cost-main/dist
 .gitnexus
 .tanstack
 script.sh
+
+session.md
+
+context-layer/requirement
+
+query.md

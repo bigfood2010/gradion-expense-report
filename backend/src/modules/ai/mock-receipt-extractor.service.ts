@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import {
-  ReceiptExtractionInput,
-  ReceiptExtractorRepository,
-} from './receipt-extractor.repository';
+import { ReceiptExtractionInput, ReceiptExtractorRepository } from './receipt-extractor.repository';
 import { parseReceiptText } from './receipt-text-parser';
 
 @Injectable()

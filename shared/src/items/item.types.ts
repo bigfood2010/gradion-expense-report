@@ -18,6 +18,7 @@ export interface ExpenseItemDto {
   receiptOriginalName: string | null;
   aiStatus: AIStatus;
   aiExtracted: boolean;
+  extractionError?: string | null;
   createdAt: IsoDateTimeString;
   updatedAt: IsoDateTimeString;
 }

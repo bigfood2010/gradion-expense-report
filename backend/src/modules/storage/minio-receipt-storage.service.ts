@@ -12,7 +12,6 @@ const PRESIGNED_URL_EXPIRY_SECONDS = 60 * 15;
 @Injectable()
 export class MinioReceiptStorageService extends ReceiptStorageRepository {
   private readonly bucketName = process.env.MINIO_BUCKET_NAME ?? 'receipts';
-  private readonly publicBaseUrl = process.env.MINIO_PUBLIC_URL;
   private readonly client = new Client({
     endPoint: process.env.MINIO_ENDPOINT ?? 'localhost',
     port: Number(process.env.MINIO_PORT ?? 9000),
@@ -20,7 +19,7 @@ export class MinioReceiptStorageService extends ReceiptStorageRepository {
     accessKey: process.env.MINIO_ROOT_USER ?? 'gradion_minio',
     secretKey: process.env.MINIO_ROOT_PASSWORD ?? 'secure_minio_pass',
   });
-  private bucketReady = false;
+  private bucketReadyPromise: Promise<void> | null = null;
 
   async uploadReceipt(input: UploadReceiptInput): Promise<StoredReceipt> {
     await this.ensureBucket();
@@ -41,10 +40,6 @@ export class MinioReceiptStorageService extends ReceiptStorageRepository {
   }
 
   async getReceiptUrl(objectKey: string): Promise<string> {
-    if (this.publicBaseUrl) {
-      return `${this.publicBaseUrl.replace(/\/$/, '')}/${this.bucketName}/${objectKey}`;
-    }
-
     return this.client.presignedGetObject(this.bucketName, objectKey, PRESIGNED_URL_EXPIRY_SECONDS);
   }
 
@@ -60,18 +55,21 @@ export class MinioReceiptStorageService extends ReceiptStorageRepository {
     await this.client.removeObject(this.bucketName, objectKey);
   }
 
-  private async ensureBucket(): Promise<void> {
-    if (this.bucketReady) {
-      return;
+  private ensureBucket(): Promise<void> {
+    if (!this.bucketReadyPromise) {
+      this.bucketReadyPromise = this.initBucket().catch((error) => {
+        this.bucketReadyPromise = null;
+        throw error;
+      });
     }
+    return this.bucketReadyPromise;
+  }
 
+  private async initBucket(): Promise<void> {
     const exists = await this.client.bucketExists(this.bucketName);
-
     if (!exists) {
       await this.client.makeBucket(this.bucketName, 'us-east-1');
     }
-
-    this.bucketReady = true;
   }
 }
 

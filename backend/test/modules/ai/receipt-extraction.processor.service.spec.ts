@@ -41,6 +41,7 @@ describe('ReceiptExtractionProcessorService', () => {
 
     expect(expenseItemsRepository.update).toHaveBeenCalledWith('item-1', {
       aiStatus: AI_STATUS.COMPLETED,
+      aiExtracted: true,
       amount: '38.02',
       merchant: null,
       date: null,

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Loader2, LoaderCircle, Plus, ReceiptText, Sparkles, Trash2 } from 'lucide-react';
+import { Loader2, LoaderCircle, PencilLine, Plus, ReceiptText, Trash2 } from 'lucide-react';
 import { useId, useRef, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react';
 
 import { cn } from '@client/lib/cn';
@@ -51,16 +51,19 @@ function ItemRow({
   const isProcessing = item.aiStatus === 'PROCESSING';
   const needsReview = item.aiStatus === 'COMPLETED' && !item.aiExtracted;
   const hasFailed = item.aiStatus === 'FAILED';
+  const hasInvalidAmount = parseFloat(String(item.amount ?? 0)) <= 0;
+  const canEditItem = canDelete && !isProcessing && (needsReview || hasFailed || hasInvalidAmount);
+  const editLabel = item.merchant?.trim() || item.description?.trim() || 'expense';
 
   return (
     <motion.div
       layout
       variants={fadeInUp}
       exit={{ opacity: 0, x: -20 }}
-      className={`group grid items-center border-b border-black/[0.04] py-5 transition-colors hover:bg-black/[0.01] ${
+      className={`grid items-center border-b border-black/[0.04] py-5 transition-colors hover:bg-black/[0.01] ${
         canDelete
-          ? 'grid-cols-[1fr_80px_100px_40px_40px]'
-          : 'grid-cols-[1fr_80px_100px_40px]'
+          ? 'grid-cols-[minmax(0,1fr)_96px_108px_48px_48px]'
+          : 'grid-cols-[minmax(0,1fr)_96px_108px_48px]'
       }`}
     >
       <div className="min-w-0 pr-4">
@@ -76,7 +79,9 @@ function ItemRow({
             onClick={() => onReviewItem(item)}
           >
             <span className="truncate text-[15px] font-bold text-foreground">
-              {item.merchant || <span className="font-normal text-muted-foreground/60">No merchant</span>}
+              {item.merchant || (
+                <span className="font-normal text-muted-foreground/60">No merchant</span>
+              )}
             </span>
             <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200 group-hover/review:bg-amber-100">
               Review
@@ -87,9 +92,7 @@ function ItemRow({
         )}
         {!isProcessing && (
           <p className="mt-1 truncate text-[13px] text-muted-foreground/70">
-            {hasFailed
-              ? 'Extraction failed'
-              : item.description?.trim() || 'No description'}
+            {hasFailed ? 'Extraction failed' : item.description?.trim() || 'No description'}
           </p>
         )}
       </div>
@@ -97,15 +100,27 @@ function ItemRow({
         {isProcessing ? '—' : item.date ? formatDate(item.date) : '—'}
       </p>
       <p className="text-right text-[15px] font-bold text-foreground">
-        {isProcessing ? '—' : formatCurrency(Number(item.amount), item.currency || currency || 'USD')}
+        {isProcessing
+          ? '—'
+          : formatCurrency(Number(item.amount), item.currency || currency || 'USD')}
         {!isProcessing && parseFloat(String(item.amount ?? 0)) <= 0 && (
-          <span className="ml-1 inline-flex size-2 rounded-full bg-amber-400" title="Amount required for submission" />
+          <span
+            className="ml-1 inline-flex size-2 rounded-full bg-amber-400"
+            title="Amount required for submission"
+          />
         )}
       </p>
       <div className="flex items-center justify-end pl-2">
-        {item.aiExtracted && (
-          <Sparkles size={14} className="text-muted-foreground/50" strokeWidth={1.8} />
-        )}
+        {canEditItem ? (
+          <button
+            type="button"
+            aria-label={`Edit ${editLabel} item`}
+            className="inline-flex size-10 items-center justify-center rounded-full border border-transparent text-muted-foreground/40 opacity-90 transition-colors duration-200 hover:bg-black/[0.03] hover:text-foreground focus-visible:bg-black/[0.03] focus-visible:text-foreground focus-visible:outline-none"
+            onClick={() => onReviewItem(item)}
+          >
+            <PencilLine aria-hidden="true" className="size-4" strokeWidth={1.8} />
+          </button>
+        ) : null}
       </div>
       {canDelete ? (
         <div className="flex items-center justify-end pl-2">
@@ -116,8 +131,8 @@ function ItemRow({
             className={`inline-flex size-10 items-center justify-center rounded-full border border-transparent transition-all duration-200 ${
               deletingItemId === item.id
                 ? 'cursor-wait bg-red-50 text-red-600 opacity-100'
-                : 'text-muted-foreground/40 opacity-90 group-hover:bg-red-50 group-hover:text-red-600 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 focus-visible:bg-red-50 focus-visible:text-red-600'
-            } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200 disabled:cursor-wait disabled:opacity-100 disabled:text-red-600`}
+                : 'text-muted-foreground/40 opacity-90 hover:bg-red-50 hover:text-red-600 hover:opacity-100 focus-visible:bg-red-50 focus-visible:text-red-600'
+            } focus-visible:outline-none disabled:cursor-wait disabled:opacity-100 disabled:text-red-600`}
             disabled={deletingItemId === item.id}
             onClick={() => void onDeleteItem(item.id)}
           >
@@ -238,7 +253,8 @@ export function ReportDetailView({
                 'Saving changes…'
               ) : invalidItemCount > 0 ? (
                 <span className="text-amber-600 text-sm font-medium">
-                  {invalidItemCount} item{invalidItemCount !== 1 ? 's' : ''} need{invalidItemCount === 1 ? 's' : ''} a valid amount before submission.
+                  {invalidItemCount} item{invalidItemCount !== 1 ? 's' : ''} need
+                  {invalidItemCount === 1 ? 's' : ''} a valid amount before submission.
                 </span>
               ) : (
                 <span className="text-muted-foreground">Finalize your report for submission.</span>
@@ -273,14 +289,14 @@ export function ReportDetailView({
           <div
             className={`grid border-b border-black/[0.04] pb-4 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground/60 ${
               canDeleteItems
-                ? 'grid-cols-[1fr_80px_100px_40px_40px]'
-                : 'grid-cols-[1fr_80px_100px_40px]'
+                ? 'grid-cols-[minmax(0,1fr)_96px_108px_48px_48px]'
+                : 'grid-cols-[minmax(0,1fr)_96px_108px_48px]'
             }`}
           >
             <h2 className="font-bold">Merchant</h2>
             <span className="">Date</span>
             <span className="text-right">Amount</span>
-            <span className="text-right">AI</span>
+            <span className="sr-only">Edit</span>
             {canDeleteItems ? <span aria-hidden="true" /> : null}
           </div>
           <motion.div layout>

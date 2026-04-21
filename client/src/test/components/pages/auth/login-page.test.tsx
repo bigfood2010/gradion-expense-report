@@ -19,7 +19,9 @@ jest.mock('@client/components/pages/auth/auth-page', () => ({
       {footer}
       {error && <p role="alert">{error}</p>}
       <form data-testid="login-form" onSubmit={onSubmit}>
-        <button type="submit" disabled={loading}>Submit</button>
+        <button type="submit" disabled={loading}>
+          Submit
+        </button>
       </form>
     </div>
   ),
@@ -98,9 +100,9 @@ describe('LoginPage', () => {
   });
 
   it('shows error message when login throws ApiClientError', async () => {
-    const login = jest.fn().mockRejectedValue(
-      new ApiClientError('Invalid credentials', { status: 401 }),
-    );
+    const login = jest
+      .fn()
+      .mockRejectedValue(new ApiClientError('Invalid credentials', { status: 401 }));
     mockUnauthenticated({ login });
 
     render(<LoginPage />);

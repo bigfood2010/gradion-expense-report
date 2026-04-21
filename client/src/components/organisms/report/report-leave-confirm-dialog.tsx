@@ -49,7 +49,7 @@ export function ReportLeaveConfirmDialog({
             <AlertDialog.Cancel asChild>
               <button
                 type="button"
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-[--border] bg-white px-4 text-[14px] font-medium text-[--foreground] transition-[background-color,border-color] duration-150 hover:bg-black/[0.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--foreground]/20"
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-[--border] bg-white px-4 text-[14px] font-medium text-[--foreground] transition-[background-color,border-color] duration-150 hover:bg-black/[0.02]"
                 onClick={() => {
                   closeIntentRef.current = 'cancel';
                   onCancel();
@@ -61,7 +61,7 @@ export function ReportLeaveConfirmDialog({
             <AlertDialog.Action asChild>
               <button
                 type="button"
-                className="inline-flex min-h-11 items-center justify-center rounded-md bg-red-600 px-4 text-[14px] font-medium text-white transition-[background-color,opacity] duration-150 hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-red-600 px-4 text-[14px] font-medium text-white transition-[background-color,opacity] duration-150 hover:bg-red-700"
                 onClick={() => {
                   closeIntentRef.current = 'confirm';
                   onConfirm();

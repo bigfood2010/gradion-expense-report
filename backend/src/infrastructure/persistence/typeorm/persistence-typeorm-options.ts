@@ -47,6 +47,7 @@ function createPostgresOptions(
 ): DataSourceOptions {
   const databaseUrl = readEnv('DATABASE_URL');
   const sslEnabled = readBoolean(readEnv('DB_SSL'), false);
+  const sslCa = readEnv('DB_CA_CERT');
   const localEnvironment = isLocalEnvironment(readEnv);
 
   return {
@@ -65,7 +66,12 @@ function createPostgresOptions(
       overrides.synchronize ?? (localEnvironment && readBoolean(readEnv('DB_SYNCHRONIZE'), false)),
     dropSchema: overrides.dropSchema ?? false,
     logging: overrides.logging ?? readBoolean(readEnv('DB_LOGGING'), localEnvironment),
-    ssl: sslEnabled ? { rejectUnauthorized: false } : false,
+    ssl: sslEnabled
+      ? {
+          rejectUnauthorized: readBoolean(readEnv('DB_SSL_REJECT_UNAUTHORIZED'), true),
+          ...(sslCa ? { ca: sslCa.replace(/\\n/g, '\n') } : {}),
+        }
+      : false,
     extra: {
       max: readNumber(readEnv('DB_POOL_SIZE'), DEFAULT_POOL_SIZE),
     },

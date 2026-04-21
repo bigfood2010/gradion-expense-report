@@ -36,9 +36,15 @@ export interface ExpenseReportQueryDto
 }
 
 export interface ExpenseReportDashboardSummaryDto {
+  // Legacy fields (for backward compatibility)
   activeDrafts: number;
   pendingApproval: number;
   totalProcessed: number;
+  // New detailed fields
+  draftCount: number;
+  submittedCount: number;
+  approvedCount: number;
+  rejectedCount: number;
 }
 
 export interface ExpenseReportUserSummaryDto {
@@ -61,5 +67,11 @@ export type ExpenseReportListResponseDto = PaginatedResponseDto<ExpenseReportSum
 
 export type ExpenseReportAdminListResponseDto =
   PaginatedResponseDto<ExpenseReportDetailResponseDto>;
+
+export interface ExpenseReportCursorResponseDto {
+  items: ExpenseReportSummaryDto[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
 
 export type PaginatedExpenseReportResponseDto = ExpenseReportListResponseDto;

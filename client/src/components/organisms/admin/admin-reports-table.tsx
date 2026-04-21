@@ -29,9 +29,7 @@ function formatStatusLabel(status: string) {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={cn('status-badge', getStatusTone(status))}>
-      {formatStatusLabel(status)}
-    </span>
+    <span className={cn('status-badge', getStatusTone(status))}>{formatStatusLabel(status)}</span>
   );
 }
 
@@ -209,12 +207,16 @@ function AdminAccordionRow({
                           <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground/40">
                             AI Result
                           </span>
-                          <span className={cn(
-                            'rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wide transition-colors',
-                            item.aiStatus === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                            item.aiStatus === 'FAILED' ? 'bg-rose-50 text-rose-700 border border-rose-100' :
-                            'bg-amber-50 text-amber-700 border border-amber-100 animate-pulse'
-                          )}>
+                          <span
+                            className={cn(
+                              'rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wide transition-colors',
+                              item.aiStatus === 'COMPLETED'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                : item.aiStatus === 'FAILED'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-100'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-100 animate-pulse',
+                            )}
+                          >
                             {item.aiStatus}
                           </span>
                         </div>

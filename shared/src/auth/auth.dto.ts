@@ -7,7 +7,6 @@ export interface LoginRequestDto {
 }
 
 export interface SignupRequestDto {
-  name: string;
   email: string;
   password: string;
   role?: UserRole;

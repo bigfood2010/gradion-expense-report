@@ -8,6 +8,7 @@ import type {
 import type {
   CreateExpenseReportRequestDto,
   ExpenseReportAdminListResponseDto,
+  ExpenseReportCursorResponseDto,
   ExpenseReportDashboardSummaryDto,
   ExpenseReportDetailResponseDto,
   ExpenseReportListResponseDto,
@@ -114,56 +115,56 @@ export class ApiClient {
       : timeoutController.signal;
 
     try {
-    const response = await fetch(`${this.baseUrl}${path}${toSearchParams(query)}`, {
-      method,
-      headers: {
-        Accept: 'application/json',
-        ...(isMultipart
-          ? {}
-          : body
-            ? {
-                'Content-Type': 'application/json',
-              }
-            : {}),
-      },
-      body: !body ? undefined : isMultipart ? (body as FormData) : JSON.stringify(body),
-      credentials: 'include',
-      signal,
-    });
+      const response = await fetch(`${this.baseUrl}${path}${toSearchParams(query)}`, {
+        method,
+        headers: {
+          Accept: 'application/json',
+          ...(isMultipart
+            ? {}
+            : body
+              ? {
+                  'Content-Type': 'application/json',
+                }
+              : {}),
+        },
+        body: !body ? undefined : isMultipart ? (body as FormData) : JSON.stringify(body),
+        credentials: 'include',
+        signal,
+      });
 
-    const payload = response.headers.get('content-type')?.includes('application/json')
-      ? ((await response.json()) as ApiEnvelopeDto<TResponse> | TResponse)
-      : (undefined as TResponse | undefined);
+      const payload = response.headers.get('content-type')?.includes('application/json')
+        ? ((await response.json()) as ApiEnvelopeDto<TResponse> | TResponse)
+        : (undefined as TResponse | undefined);
 
-    if (!response.ok) {
-      if (
-        response.status === 401 &&
-        !UNAUTHENTICATED_PATHS.some((p) => path.startsWith(p)) &&
-        !this.handlingUnauthorized
-      ) {
-        this.handlingUnauthorized = true;
-        this.unauthorizedHandler?.();
-      }
+      if (!response.ok) {
+        if (
+          response.status === 401 &&
+          !UNAUTHENTICATED_PATHS.some((p) => path.startsWith(p)) &&
+          !this.handlingUnauthorized
+        ) {
+          this.handlingUnauthorized = true;
+          this.unauthorizedHandler?.();
+        }
 
-      if (
-        payload &&
-        typeof payload === 'object' &&
-        'success' in payload &&
-        payload.success === false
-      ) {
-        throw new ApiClientError(payload.error.message, {
+        if (
+          payload &&
+          typeof payload === 'object' &&
+          'success' in payload &&
+          payload.success === false
+        ) {
+          throw new ApiClientError(payload.error.message, {
+            status: response.status,
+            code: payload.error.code,
+            details: payload.error.details,
+          });
+        }
+
+        throw new ApiClientError(response.statusText || 'Request failed', {
           status: response.status,
-          code: payload.error.code,
-          details: payload.error.details,
         });
       }
 
-      throw new ApiClientError(response.statusText || 'Request failed', {
-        status: response.status,
-      });
-    }
-
-    return unwrapEnvelope(payload as ApiEnvelopeDto<TResponse> | TResponse, response.status);
+      return unwrapEnvelope(payload as ApiEnvelopeDto<TResponse> | TResponse, response.status);
     } finally {
       clearTimeout(timeoutId);
     }
@@ -191,6 +192,11 @@ export class ApiClient {
       this.request<ExpenseReportListResponseDto>('/reports', {
         method: 'GET',
         query,
+      }),
+    listCursor: (cursor?: string, limit = 50, status?: string) =>
+      this.request<ExpenseReportCursorResponseDto>('/reports/infinite', {
+        method: 'GET',
+        query: { cursor, limit, status },
       }),
     summary: () =>
       this.request<ExpenseReportDashboardSummaryDto>('/reports/summary', {

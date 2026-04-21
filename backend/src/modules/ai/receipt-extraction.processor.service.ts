@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { ExpenseItemsRepository } from '@backend/modules/items/repositories/expense-items.repository';
 import { AI_STATUS } from '@backend/modules/items/items.types';
@@ -9,6 +9,8 @@ import { ReceiptExtractorRepository } from '@backend/modules/ai/receipt-extracto
 
 @Injectable()
 export class ReceiptExtractionProcessorService {
+  private readonly logger = new Logger(ReceiptExtractionProcessorService.name);
+
   constructor(
     private readonly expenseItemsRepository: ExpenseItemsRepository,
     @Inject(RECEIPT_STORAGE)
@@ -20,7 +22,17 @@ export class ReceiptExtractionProcessorService {
   async process(itemId: string): Promise<void> {
     const item = await this.expenseItemsRepository.findById(itemId);
 
-    if (!item?.receiptObjectKey) {
+    if (!item) {
+      this.logger.warn(`Item ${itemId} not found — skipping extraction`);
+      return;
+    }
+
+    if (!item.receiptObjectKey) {
+      this.logger.warn(`Item ${itemId} has no receiptObjectKey — marking FAILED`);
+      await this.expenseItemsRepository.update(itemId, {
+        aiStatus: AI_STATUS.FAILED,
+        extractionError: 'No receipt file associated with this item.',
+      });
       return;
     }
 
@@ -37,6 +49,7 @@ export class ReceiptExtractionProcessorService {
 
       await this.expenseItemsRepository.update(item.id, {
         aiStatus: AI_STATUS.COMPLETED,
+        aiExtracted: true,
         amount: normalizeOptionalExtractionValue(extraction.amount),
         merchant: normalizeOptionalExtractionValue(extraction.merchant),
         date: normalizeOptionalExtractionValue(extraction.date),
@@ -45,9 +58,14 @@ export class ReceiptExtractionProcessorService {
         extractionError: null,
       });
     } catch (error) {
+      this.logger.warn(
+        `Receipt extraction failed for item ${item.id}: ${
+          error instanceof Error ? error.message : 'Unknown extraction error'
+        }`,
+      );
       await this.expenseItemsRepository.update(item.id, {
         aiStatus: AI_STATUS.FAILED,
-        extractionError: error instanceof Error ? error.message : 'Unknown extraction error',
+        extractionError: 'Receipt extraction failed.',
       });
     }
   }

@@ -22,7 +22,11 @@ import { AI_STATUS, REPORT_STATUS } from '@backend/modules/items/items.types';
 import { UserRole } from '@backend/modules/users/domain/user-role.enum';
 
 const TEST_SECRET = 'test-jwt-secret-for-items-controller-spec';
-const TEST_USER_ID = 'test-user-1';
+const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
+const REPORT_DRAFT_ID = '10000000-0000-0000-0000-000000000001';
+const REPORT_SUBMITTED_ID = '10000000-0000-0000-0000-000000000002';
+const REPORT_REJECTED_ID = '10000000-0000-0000-0000-000000000003';
+const REPORT_APPROVED_ID = '10000000-0000-0000-0000-000000000004';
 
 describe('ItemsController', () => {
   let app: INestApplication;
@@ -76,10 +80,10 @@ describe('ItemsController', () => {
     });
 
     reportStateRepository.seed([
-      { id: 'report-draft', userId: TEST_USER_ID, status: REPORT_STATUS.DRAFT },
-      { id: 'report-submitted', userId: TEST_USER_ID, status: REPORT_STATUS.SUBMITTED },
-      { id: 'report-rejected', userId: TEST_USER_ID, status: REPORT_STATUS.REJECTED },
-      { id: 'report-approved', userId: TEST_USER_ID, status: REPORT_STATUS.APPROVED },
+      { id: REPORT_DRAFT_ID, userId: TEST_USER_ID, status: REPORT_STATUS.DRAFT },
+      { id: REPORT_SUBMITTED_ID, userId: TEST_USER_ID, status: REPORT_STATUS.SUBMITTED },
+      { id: REPORT_REJECTED_ID, userId: TEST_USER_ID, status: REPORT_STATUS.REJECTED },
+      { id: REPORT_APPROVED_ID, userId: TEST_USER_ID, status: REPORT_STATUS.APPROVED },
     ]);
   });
 
@@ -89,7 +93,7 @@ describe('ItemsController', () => {
 
   it('accepts receipt uploads and completes deterministic extraction asynchronously', async () => {
     const uploadResponse = await request(app.getHttpServer())
-      .post('/api/v1/reports/report-draft/items')
+      .post(`/api/v1/reports/${REPORT_DRAFT_ID}/items`)
       .set('Authorization', `Bearer ${authToken}`)
       .attach(
         'receipt',
@@ -106,7 +110,7 @@ describe('ItemsController', () => {
     });
 
     const listResponse = await request(app.getHttpServer())
-      .get('/api/v1/reports/report-draft/items')
+      .get(`/api/v1/reports/${REPORT_DRAFT_ID}/items`)
       .set('Authorization', `Bearer ${authToken}`)
       .expect(200);
 
@@ -121,29 +125,42 @@ describe('ItemsController', () => {
         }),
       ]),
     );
-    expect(listResponse.body.items[0].receiptUrl).toContain('report-draft');
+    expect(listResponse.body.items[0].receiptUrl).toContain(REPORT_DRAFT_ID);
   });
 
   it('rejects receipt uploads when the parent report is locked', async () => {
     await request(app.getHttpServer())
-      .post('/api/v1/reports/report-submitted/items')
+      .post(`/api/v1/reports/${REPORT_SUBMITTED_ID}/items`)
       .set('Authorization', `Bearer ${authToken}`)
       .attach('receipt', Buffer.from('merchant: Locked'), 'locked.txt')
       .expect(409);
 
-    await expect(expenseItemsRepository.findByReportId('report-submitted')).resolves.toHaveLength(
+    await expect(expenseItemsRepository.findByReportId(REPORT_SUBMITTED_ID)).resolves.toHaveLength(
       0,
     );
   });
 
+  it('rejects unsupported receipt uploads before storage', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/v1/reports/${REPORT_DRAFT_ID}/items`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .attach('receipt', Buffer.from('not a receipt'), {
+        filename: 'receipt.exe',
+        contentType: 'application/octet-stream',
+      })
+      .expect(400);
+
+    await expect(expenseItemsRepository.findByReportId(REPORT_DRAFT_ID)).resolves.toHaveLength(0);
+  });
+
   it('moves rejected reports back to draft on item mutation', async () => {
     const seededItem = await expenseItemsRepository.create({
-      reportId: 'report-rejected',
+      reportId: REPORT_REJECTED_ID,
       aiStatus: AI_STATUS.COMPLETED,
       amount: '8.25',
       merchant: 'Original Merchant',
       date: '2026-04-01',
-      receiptObjectKey: 'receipts/report-rejected/original.txt',
+      receiptObjectKey: `receipts/${REPORT_REJECTED_ID}/original.txt`,
       receiptMimeType: 'text/plain',
       receiptOriginalName: 'original.txt',
       receiptSize: 16,
@@ -158,7 +175,7 @@ describe('ItemsController', () => {
       })
       .expect(200);
 
-    const report = await reportStateRepository.findById('report-rejected');
+    const report = await reportStateRepository.findById(REPORT_REJECTED_ID);
     const updatedItem = await expenseItemsRepository.findById(seededItem.id);
 
     expect(report?.status).toBe(REPORT_STATUS.DRAFT);
@@ -168,12 +185,12 @@ describe('ItemsController', () => {
 
   it('preserves the item and rejects deletion when the report is approved', async () => {
     const seededItem = await expenseItemsRepository.create({
-      reportId: 'report-approved',
+      reportId: REPORT_APPROVED_ID,
       aiStatus: AI_STATUS.COMPLETED,
       amount: '14.00',
       merchant: 'Approved Merchant',
       date: '2026-04-02',
-      receiptObjectKey: 'receipts/report-approved/original.txt',
+      receiptObjectKey: `receipts/${REPORT_APPROVED_ID}/original.txt`,
       receiptMimeType: 'text/plain',
       receiptOriginalName: 'original.txt',
       receiptSize: 20,
@@ -189,7 +206,7 @@ describe('ItemsController', () => {
 
   it('marks extraction as failed when the deterministic extractor is instructed to fail', async () => {
     const uploadResponse = await request(app.getHttpServer())
-      .post('/api/v1/reports/report-draft/items')
+      .post(`/api/v1/reports/${REPORT_DRAFT_ID}/items`)
       .set('Authorization', `Bearer ${authToken}`)
       .attach('receipt', Buffer.from('fail-extraction'), 'fail-extraction.txt')
       .expect(202);
@@ -197,7 +214,7 @@ describe('ItemsController', () => {
     await waitFor(async () => {
       const stored = await expenseItemsRepository.findById(uploadResponse.body.item.id);
       expect(stored?.aiStatus).toBe(AI_STATUS.FAILED);
-      expect(stored?.extractionError).toBe('Deterministic extraction failure requested');
+      expect(stored?.extractionError).toBe('Receipt extraction failed.');
     });
   });
 });

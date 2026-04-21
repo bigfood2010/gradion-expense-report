@@ -10,13 +10,30 @@ export interface ExpenseReportsListFilters {
 export interface ExpenseReportsPaginationFilters
   extends ExpenseReportsListFilters, PaginationQueryDto {}
 
+export interface ExpenseReportsCursorFilters {
+  ownerId?: string;
+  status?: ExpenseReportStatus | readonly ExpenseReportStatus[];
+  cursor?: string;
+  limit?: number;
+}
+
 export interface ExpenseReportsListResult {
   items: ExpenseReportEntity[];
   totalItems: number;
 }
 
+export interface ExpenseReportsCursorResult {
+  items: ExpenseReportEntity[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
 export abstract class ExpenseReportsRepository {
   abstract list(filters?: ExpenseReportsPaginationFilters): Promise<ExpenseReportsListResult>;
+
+  abstract listWithCursor(
+    filters?: ExpenseReportsCursorFilters,
+  ): Promise<ExpenseReportsCursorResult>;
 
   abstract count(filters?: ExpenseReportsListFilters): Promise<number>;
 

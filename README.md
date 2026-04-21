@@ -1,5 +1,7 @@
 # Gradion Assessment
 
+Expense report app with receipt upload, AI extraction, user review, and admin approval
+
 **Stack:** NestJS · PostgreSQL · MinIO · React + Vite · TanStack Router · pnpm workspaces
 
 ![Home](context-layer/assets/home.png)
@@ -28,15 +30,22 @@ pnpm dev
 - **User:** user@example.com / password
 - **Admin:** admin@example.com / password
 
-### AI Pre-fill
+### AI Receipt Extraction
 
-The receipt upload form can auto-fill merchant, amount, and date using Gemini. Get a free API key from [Google AI Studio](https://aistudio.google.com/app/apikey) and add it to `client/.env`:
+Receipt uploads are processed server-side using **Gemini 2.5 Flash** (via the OpenAI-compatible endpoint). The flow:
 
 ```
-VITE_GEMINI_API_KEY=your-key-here
+Browser → POST /reports/:id/items (multipart)
+  └─ Backend stores receipt in MinIO
+  └─ Dispatches async extraction job
+       └─ Gemini extracts merchant / amount / date / currency
+       └─ Updates item aiStatus: PROCESSING → COMPLETED | FAILED
+  └─ Client polls every 2 s until status settles
+       └─ COMPLETED → pre-fills the review form
+       └─ FAILED    → shows error + retry option
 ```
 
-Skip this if you want to enter details manually.
+To enable AI extraction, set `AI_PROVIDER_API_KEY` in `backend/.env` (a free key is available at [Google AI Studio](https://aistudio.google.com/app/apikey)). Leave it blank to use the mock extractor and fill details manually.
 
 ---
 
@@ -65,5 +74,4 @@ Skip this if you want to enter details manually.
 ## Documentation
 
 - [**AI Usage**](context-layer/AI_USAGE.md): Detailed notes on the AI tools and workflow used.
-- [**Decisions & Trade-offs**](context-layer/DECISIONS.md): Architectural choices and future roadmap.
-- [**Technical Walkthrough**](context-layer/WALKTHROUGH.md): Detailed setup, API reference, and examples.
+- [**Rules**](context-layer/RULES.md): Project conventions, migration policy, and implementation guardrails.

@@ -1,6 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileUp, LoaderCircle, Sparkles, Upload, X } from 'lucide-react';
-import { useId, useRef, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react';
+import {
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type KeyboardEvent,
+} from 'react';
 
 import type {
   ReceiptDraft,
@@ -17,16 +24,22 @@ const AI_FIELD_LABELS: Record<ReceiptDraftField, string> = {
   date: 'Date',
 };
 
+const REQUIRED_RECEIPT_FIELDS: ReceiptDraftField[] = ['merchant', 'amount', 'currency', 'date'];
+const REQUIRED_FIELD_ERROR = 'This field is required.';
+
 function ReceiptField({
+  error,
   field,
   onDraftChange,
   value,
 }: {
+  error?: string;
   field: ReceiptDraftField;
   onDraftChange: (patch: Partial<ReceiptDraft>) => void;
   value: ReceiptDraft;
 }) {
   const id = useId();
+  const errorId = `${id}-error`;
   const isAiField = Boolean(value.aiExtractedFields[field]);
   const label = AI_FIELD_LABELS[field];
   const isAmount = field === 'amount';
@@ -55,7 +68,11 @@ function ReceiptField({
         id={id}
         name={field}
         autoComplete="off"
-        className="min-h-12 w-full border-0 border-b border-border/40 bg-transparent px-0 py-3 text-[14px] text-[--foreground] focus:border-[rgb(255,107,0)]/40 focus:ring-0 focus-visible:outline-none transition-[border-color,color] duration-150 placeholder:text-[#a3a3a3]"
+        aria-describedby={error ? errorId : undefined}
+        aria-invalid={error ? 'true' : 'false'}
+        className={`min-h-12 w-full border-0 border-b bg-transparent px-0 py-3 text-[14px] text-[--foreground] focus:border-[rgb(255,107,0)]/40 focus:ring-0 focus-visible:outline-none transition-[border-color,color] duration-150 placeholder:text-[#a3a3a3] ${
+          error ? 'border-red-400/80' : 'border-border/40'
+        }`}
         inputMode={isAmount ? 'decimal' : undefined}
         placeholder={`${label}…`}
         min={isAmount ? '0' : undefined}
@@ -65,7 +82,11 @@ function ReceiptField({
         value={value[field] ?? ''}
         onChange={(event) => onDraftChange({ [field]: event.currentTarget.value })}
       />
-
+      {error ? (
+        <p id={errorId} className="text-[12px] leading-[1.4] text-red-600">
+          {error}
+        </p>
+      ) : null}
     </motion.div>
   );
 }
@@ -86,6 +107,7 @@ export function ReportReceiptDrawer({
 }: ReportReceiptDrawerProps) {
   const fileInputId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<ReceiptDraftField, string>>>({});
   const canUpload = reportStatus === 'DRAFT' || reportStatus === 'REJECTED';
   const isBusy = isUploadingReceipt || drawer.step === 'processing';
 
@@ -98,16 +120,53 @@ export function ReportReceiptDrawer({
       draft.date !== initialDraft.date
     : false;
 
-  const hasRequiredFields =
-    draft.merchant.trim() !== '' &&
-    draft.amount.trim() !== '' &&
-    draft.currency.trim() !== '' &&
-    draft.date.trim() !== '';
+  const isSaveDisabled = isSavingReceipt || (isEditMode && (!isDirty || reportStatus !== 'DRAFT'));
 
-  const isSaveDisabled =
-    isSavingReceipt ||
-    !hasRequiredFields ||
-    (isEditMode && (!isDirty || reportStatus !== 'DRAFT'));
+  const handleDraftFieldChange = (patch: Partial<ReceiptDraft>) => {
+    onDraftChange(patch);
+
+    const [field, nextValue] = Object.entries(patch)[0] as [ReceiptDraftField, string];
+    if (!REQUIRED_RECEIPT_FIELDS.includes(field)) {
+      return;
+    }
+
+    setFieldErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+
+      if (nextValue.trim() === '') {
+        return current;
+      }
+
+      const nextErrors = { ...current };
+      delete nextErrors[field];
+      return nextErrors;
+    });
+  };
+
+  const validateRequiredFields = () => {
+    const nextErrors = REQUIRED_RECEIPT_FIELDS.reduce<Partial<Record<ReceiptDraftField, string>>>(
+      (errors, field) => {
+        if (draft[field].trim() === '') {
+          errors[field] = REQUIRED_FIELD_ERROR;
+        }
+        return errors;
+      },
+      {},
+    );
+
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSaveClick = async () => {
+    if (!validateRequiredFields()) {
+      return;
+    }
+
+    await onSave();
+  };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
@@ -194,7 +253,7 @@ export function ReportReceiptDrawer({
               <button
                 type="button"
                 aria-label="Close receipt drawer"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[--muted-foreground] transition-[background-color,color] duration-150 hover:bg-[--foreground]/5 hover:text-[--foreground] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--foreground]/20"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[--muted-foreground] transition-[background-color,color] duration-150 hover:bg-[--foreground]/5 hover:text-[--foreground]"
                 onClick={onClose}
               >
                 <X aria-hidden="true" className="size-4.5" strokeWidth={1.6} />
@@ -231,7 +290,6 @@ export function ReportReceiptDrawer({
                         <h2 className="text-[16px] font-medium tracking-[-0.01em] text-[--foreground]">
                           Upload a Receipt
                         </h2>
-
                       </div>
                     </button>
 
@@ -248,7 +306,7 @@ export function ReportReceiptDrawer({
 
                     <button
                       type="button"
-                      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[--foreground] px-4 text-[14px] font-medium text-white transition-[background-color,opacity] duration-150 hover:bg-[--foreground]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--foreground]/20 disabled:opacity-50"
+                      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[--foreground] px-4 text-[14px] font-medium text-white transition-[background-color,opacity] duration-150 hover:bg-[--foreground]/90 disabled:opacity-50"
                       disabled={!canUpload}
                       onClick={openPicker}
                     >
@@ -381,15 +439,36 @@ export function ReportReceiptDrawer({
                       </p>
                     </motion.div>
                     <div className="space-y-6">
-                      <ReceiptField field="merchant" onDraftChange={onDraftChange} value={draft} />
                       <ReceiptField
-                        field="description"
-                        onDraftChange={onDraftChange}
+                        error={fieldErrors.merchant}
+                        field="merchant"
+                        onDraftChange={handleDraftFieldChange}
                         value={draft}
                       />
-                      <ReceiptField field="amount" onDraftChange={onDraftChange} value={draft} />
-                      <ReceiptField field="currency" onDraftChange={onDraftChange} value={draft} />
-                      <ReceiptField field="date" onDraftChange={onDraftChange} value={draft} />
+                      <ReceiptField
+                        error={fieldErrors.description}
+                        field="description"
+                        onDraftChange={handleDraftFieldChange}
+                        value={draft}
+                      />
+                      <ReceiptField
+                        error={fieldErrors.amount}
+                        field="amount"
+                        onDraftChange={handleDraftFieldChange}
+                        value={draft}
+                      />
+                      <ReceiptField
+                        error={fieldErrors.currency}
+                        field="currency"
+                        onDraftChange={handleDraftFieldChange}
+                        value={draft}
+                      />
+                      <ReceiptField
+                        error={fieldErrors.date}
+                        field="date"
+                        onDraftChange={handleDraftFieldChange}
+                        value={draft}
+                      />
                     </div>
                   </motion.section>
                 )}
@@ -410,7 +489,7 @@ export function ReportReceiptDrawer({
                     type="button"
                     className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-black px-4 text-[14px] font-medium text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-50"
                     disabled={isSaveDisabled}
-                    onClick={onSave}
+                    onClick={() => void handleSaveClick()}
                   >
                     {isSavingReceipt ? (
                       <span className="flex items-center gap-2">

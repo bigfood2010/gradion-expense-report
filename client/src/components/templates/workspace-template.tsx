@@ -12,7 +12,7 @@ export interface WorkspaceTemplateProps {
   readonly actions?: ReactNode;
   readonly leftAction?: ReactNode;
   readonly summary?: ReactNode;
-  readonly summaryColumns?: 1 | 2 | 3;
+  readonly summaryColumns?: 1 | 2 | 3 | 5;
   readonly wide?: boolean;
   readonly showHeader?: boolean;
 }
@@ -24,7 +24,7 @@ export function WorkspaceTemplate({
   eyebrow,
   leftAction,
   summary,
-  summaryColumns = 3,
+  summaryColumns = 5,
   title,
   wide = false,
   showHeader = true,

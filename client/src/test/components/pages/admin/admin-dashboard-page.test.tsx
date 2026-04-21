@@ -3,9 +3,15 @@ import { AdminDashboardPage } from '@client/components/pages/admin/admin-dashboa
 
 // Simple data helpers (no external dependency needed)
 let _seq = 0;
-function uid() { return `id-${++_seq}-${Math.random().toString(36).slice(2)}`; }
-function email() { return `user${_seq}@example.com`; }
-function productName() { return `Product ${uid()}`; }
+function uid() {
+  return `id-${++_seq}-${Math.random().toString(36).slice(2)}`;
+}
+function email() {
+  return `user${_seq}@example.com`;
+}
+function productName() {
+  return `Product ${uid()}`;
+}
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -23,12 +29,7 @@ jest.mock('@client/components/templates/workspace-template', () => ({
 }));
 
 jest.mock('@client/components/organisms/admin/admin-reports-table', () => ({
-  AdminReportsTable: ({
-    reports,
-    onApproveReport,
-    onRejectReport,
-    onToggleReport,
-  }: any) => (
+  AdminReportsTable: ({ reports, onApproveReport, onRejectReport, onToggleReport }: any) => (
     <div data-testid="admin-reports-table">
       {reports.map((r: any) => (
         <div key={r.id} data-testid="admin-report-row">
@@ -177,11 +178,7 @@ describe('AdminDashboardPage', () => {
 
   it('falls back to reports.length in summary when paginationMeta is null', () => {
     const reports = [buildReport(), buildReport(), buildReport()];
-    render(
-      <AdminDashboardPage
-        {...defaultProps({ reports, paginationMeta: null })}
-      />,
-    );
+    render(<AdminDashboardPage {...defaultProps({ reports, paginationMeta: null })} />);
     expect(screen.getByTestId('summary')).toHaveTextContent('3');
   });
 
@@ -211,11 +208,7 @@ describe('AdminDashboardPage', () => {
   it('calls onToggleReport with the correct reportId when toggle is clicked', () => {
     const report = buildReport();
     const onToggleReport = jest.fn();
-    render(
-      <AdminDashboardPage
-        {...defaultProps({ reports: [report], onToggleReport })}
-      />,
-    );
+    render(<AdminDashboardPage {...defaultProps({ reports: [report], onToggleReport })} />);
     fireEvent.click(screen.getByRole('button', { name: 'toggle' }));
     expect(onToggleReport).toHaveBeenCalledWith(report.id);
   });
@@ -223,11 +216,7 @@ describe('AdminDashboardPage', () => {
   it('calls onApproveReport with the correct reportId when approve is clicked', () => {
     const report = buildReport();
     const onApproveReport = jest.fn();
-    render(
-      <AdminDashboardPage
-        {...defaultProps({ reports: [report], onApproveReport })}
-      />,
-    );
+    render(<AdminDashboardPage {...defaultProps({ reports: [report], onApproveReport })} />);
     fireEvent.click(screen.getByRole('button', { name: 'approve' }));
     expect(onApproveReport).toHaveBeenCalledWith(report.id);
   });
@@ -235,11 +224,7 @@ describe('AdminDashboardPage', () => {
   it('calls onRejectReport with the correct reportId when reject is clicked', () => {
     const report = buildReport();
     const onRejectReport = jest.fn();
-    render(
-      <AdminDashboardPage
-        {...defaultProps({ reports: [report], onRejectReport })}
-      />,
-    );
+    render(<AdminDashboardPage {...defaultProps({ reports: [report], onRejectReport })} />);
     fireEvent.click(screen.getByRole('button', { name: 'reject' }));
     expect(onRejectReport).toHaveBeenCalledWith(report.id);
   });
@@ -252,11 +237,7 @@ describe('AdminDashboardPage', () => {
   it('calls onPageChange when pagination triggers a page change', () => {
     const meta = buildMeta({ totalPages: 3, hasNextPage: true });
     const onPageChange = jest.fn();
-    render(
-      <AdminDashboardPage
-        {...defaultProps({ paginationMeta: meta, onPageChange })}
-      />,
-    );
+    render(<AdminDashboardPage {...defaultProps({ paginationMeta: meta, onPageChange })} />);
     fireEvent.click(screen.getByRole('button', { name: 'page-2' }));
     expect(onPageChange).toHaveBeenCalledWith(2);
   });

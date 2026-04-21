@@ -52,7 +52,7 @@ function toAmountString(value: number | string | null | undefined) {
   return typeof value === 'number' ? value.toFixed(2) : value;
 }
 
-function buildDraftFromItem(item: ReportExpenseItem): ReceiptDraft {
+export function buildDraftFromItem(item: ReportExpenseItem): ReceiptDraft {
   const aiDidExtract = item.aiStatus === 'COMPLETED' || item.aiExtracted;
   return {
     merchant: item.merchant || '',
@@ -81,7 +81,21 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function ReportDetailRoute() {
+export function countInvalidSubmitItems(items: ReportExpenseItem[]) {
+  return items.filter((item) => {
+    if (item.aiStatus === 'PROCESSING') {
+      return true;
+    }
+
+    if (item.aiStatus === 'COMPLETED' && !item.aiExtracted) {
+      return true;
+    }
+
+    return parseFloat(String(item.amount ?? 0)) <= 0;
+  }).length;
+}
+
+export function ReportDetailRoute() {
   const { reportId } = Route.useParams();
   const navigate = useNavigate();
   const { signOut, user } = useAuthSession();
@@ -94,7 +108,6 @@ function ReportDetailRoute() {
   const [reportTitleBaseline, setReportTitleBaseline] = useState('');
   const [reportTitleError, setReportTitleError] = useState<string | null>(null);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const leaveConfirmResolveRef = useRef<((shouldStay: boolean) => void) | null>(null);
   const leaveConfirmPromiseRef = useRef<Promise<boolean> | null>(null);
 
@@ -110,7 +123,7 @@ function ReportDetailRoute() {
   const updateReportMutation = useMutation({
     mutationFn: async (title: string) => apiClient.reports.update(reportId, { title }),
     onSuccess: async (updatedReport) => {
-      await Promise.all([
+      await Promise.allSettled([
         queryClient.invalidateQueries({ queryKey: queryKeys.reports.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.all }),
       ]);
@@ -159,8 +172,9 @@ function ReportDetailRoute() {
   );
 
   const confirmLeave = () => {
-    if (leaveConfirmPromiseRef.current) {
-      return leaveConfirmPromiseRef.current;
+    if (leaveConfirmOpen) {
+      // Dialog already open — keep current navigation blocked
+      return Promise.resolve(true);
     }
 
     const promise = new Promise<boolean>((resolve) => {
@@ -209,7 +223,8 @@ function ReportDetailRoute() {
     }
 
     if (pendingItem.aiStatus === 'COMPLETED') {
-      setDraft(buildDraftFromItem(pendingItem));
+      const completedDraft = buildDraftFromItem(pendingItem);
+      setDraft(completedDraft);
       setDrawer((current) => ({
         ...current,
         step: 'review',
@@ -280,6 +295,7 @@ function ReportDetailRoute() {
 
   const handleOpenDrawer = () => {
     setDraft(EMPTY_DRAFT);
+    setSavedDraft(undefined);
     setDrawer({
       open: true,
       step: 'upload',
@@ -310,7 +326,6 @@ function ReportDetailRoute() {
 
   const handleChooseReceipt = async (file: File) => {
     setSavedDraft(undefined);
-    setPendingFile(file);
     setDrawer({
       open: true,
       step: 'processing',
@@ -319,138 +334,50 @@ function ReportDetailRoute() {
       error: null,
     });
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        const base64String = reader.result as string;
-        const base64Data = base64String.split(',')[1];
-        const mimeType = file.type;
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-        if (!apiKey) {
-          throw new Error('Gemini API key is not configured on the client.');
-        }
-
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    { inlineData: { mimeType, data: base64Data } },
-                    { text: 'Extract the receipt information from this image. Return JSON only.' },
-                  ],
-                },
-              ],
-              generationConfig: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                  type: 'OBJECT',
-                  properties: {
-                    merchant: { type: 'STRING' },
-                    amount: { type: 'NUMBER' },
-                    currency: { type: 'STRING' },
-                    date: { type: 'STRING', description: 'YYYY-MM-DD format' },
-                    description: { type: 'STRING' },
-                  },
-                  required: ['merchant', 'amount', 'currency', 'date'],
-                },
-                temperature: 0.1,
-              },
-            }),
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error(`Gemini API error: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!text) {
-          throw new Error('No extraction results returned from Gemini.');
-        }
-
-        const data = JSON.parse(text);
-        setDraft({
-          merchant: data.merchant || '',
-          description: data.description || '',
-          amount: data.amount?.toString() || '',
-          currency: data.currency || 'USD',
-          date: data.date || '',
-          receiptUrl: base64String,
-          aiExtractedFields: {
-            merchant: true,
-            ...(data.description && { description: true as const }),
-            amount: true,
-            currency: true,
-            date: true,
-          },
-        });
-
-        setDrawer((current) => ({
-          ...current,
-          step: 'review',
-        }));
-      } catch (error) {
-        setDrawer({
-          open: true,
-          step: 'failed',
-          fileName: file.name,
-          pendingItemId: null,
-          error:
-            error instanceof Error ? error.message : 'The receipt extraction failed. Try again.',
-        });
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const { item } = await uploadReceiptMutation.mutateAsync({ receipt: file });
+      setDrawer((current) => ({ ...current, pendingItemId: item.id }));
+    } catch (error) {
+      setDrawer({
+        open: true,
+        step: 'failed',
+        fileName: file.name,
+        pendingItemId: null,
+        error: getErrorMessage(error, 'Upload failed. Please try again.'),
+      });
+    }
   };
 
   const handleSaveReceipt = async () => {
+    if (!drawer.pendingItemId) return;
+
     try {
-      if (pendingFile) {
-        // New item creation with pre-filled AI data
-        const formData = new FormData();
-        formData.append('receipt', pendingFile);
-        formData.append('merchant', draft.merchant.trim());
-        formData.append('description', draft.description.trim() || '');
-        formData.append('amount', draft.amount);
-        formData.append('currency', draft.currency.trim() || 'USD');
-        formData.append('date', draft.date);
-        formData.append('aiExtracted', 'true');
-
-        const response = (await apiClient.items.create(reportId, formData)) as any;
-
-        if (!response.item) {
-          throw new Error('Failed to create expense item.');
-        }
-
-        await queryClient.invalidateQueries({ queryKey: queryKeys.reports.items(reportId) });
-        setPendingFile(null);
-      } else if (drawer.pendingItemId) {
-        // Editing existing item
-        await updateItemMutation.mutateAsync({
-          itemId: drawer.pendingItemId,
-          payload: {
-            merchant: draft.merchant.trim(),
-            description: draft.description.trim() || null,
-            amount: Number(draft.amount),
-            currency: draft.currency.trim() || 'USD',
-            date: draft.date,
-            receiptUrl: draft.receiptUrl,
-            aiExtracted: true,
-          },
-        });
-      }
-
+      await updateItemMutation.mutateAsync({
+        itemId: drawer.pendingItemId,
+        payload: {
+          merchant: draft.merchant.trim(),
+          description: draft.description.trim() || null,
+          amount: draft.amount.trim(),
+          currency: draft.currency.trim() || 'USD',
+          date: draft.date,
+          aiExtracted: true,
+        },
+      });
       handleCloseDrawer();
     } catch (error) {
       toast.error(getErrorMessage(error, 'Unable to save the expense item.'));
     }
+  };
+
+  const handleRetryUpload = () => {
+    setSavedDraft(undefined);
+    setDrawer({
+      open: true,
+      step: 'upload',
+      fileName: null,
+      pendingItemId: null,
+      error: null,
+    });
   };
 
   const handleDeleteItem = async (itemId: string) => {
@@ -493,8 +420,7 @@ function ReportDetailRoute() {
     }
   };
 
-  const invalidItemCount =
-    report?.items.filter((item) => parseFloat(String(item.amount ?? 0)) <= 0).length ?? 0;
+  const invalidItemCount = report ? countInvalidSubmitItems(report.items) : 0;
 
   const canSubmitReport =
     Boolean(report) &&
@@ -546,15 +472,7 @@ function ReportDetailRoute() {
       onReportTitleCommit={handleTitleCommit}
       onReportTitleDiscard={handleTitleDiscard}
       onReviewItem={handleOpenReviewDrawer}
-      onRetryUpload={() =>
-        setDrawer({
-          open: true,
-          step: 'upload',
-          fileName: null,
-          pendingItemId: null,
-          error: null,
-        })
-      }
+      onRetryUpload={handleRetryUpload}
       onSaveReceipt={handleSaveReceipt}
       onSignOut={handleSignOut}
       onSubmitReport={handleSubmitReport}

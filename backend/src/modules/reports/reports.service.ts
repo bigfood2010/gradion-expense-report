@@ -18,6 +18,7 @@ import {
 } from '@gradion/shared/common';
 import type {
   ExpenseReportAdminListResponseDto,
+  ExpenseReportCursorResponseDto,
   ExpenseReportDashboardSummaryDto,
   ExpenseReportDetailResponseDto,
   ExpenseReportListResponseDto,
@@ -52,6 +53,38 @@ export class ReportsService {
       pagination.pageSize,
       mapExpenseReportSummaryResponse,
     );
+  }
+
+  async listOwnReportsWithCursor(
+    ownerId: string,
+    cursor?: string,
+    limit = 50,
+    status?: ExpenseReportStatus,
+  ): Promise<ExpenseReportCursorResponseDto> {
+    const filters: {
+      ownerId: string;
+      cursor?: string;
+      limit: number;
+      status?: ExpenseReportStatus;
+    } = {
+      ownerId,
+      limit,
+    };
+    if (cursor) {
+      filters.cursor = cursor;
+    }
+    if (status) {
+      filters.status = status;
+    }
+
+    const { items, nextCursor, hasMore } =
+      await this.expenseReportsRepository.listWithCursor(filters);
+
+    return {
+      items: items.map((report) => mapExpenseReportSummaryResponse(report)),
+      nextCursor,
+      hasMore,
+    };
   }
 
   async createOwnReport(
@@ -119,7 +152,10 @@ export class ReportsService {
   ): Promise<ExpenseReportDetailResponseDto> {
     const report = await this.getOwnedReportOrThrow(reportId, ownerId);
 
-    if (report.status !== ExpenseReportStatus.DRAFT && report.status !== ExpenseReportStatus.REJECTED) {
+    if (
+      report.status !== ExpenseReportStatus.DRAFT &&
+      report.status !== ExpenseReportStatus.REJECTED
+    ) {
       throw new BadRequestException('Only draft or rejected reports can be submitted.');
     }
 
@@ -127,10 +163,11 @@ export class ReportsService {
       throw new BadRequestException('A report must contain at least one item before submission.');
     }
 
-    const invalidItems = report.items?.filter(item => parseFloat(String(item.amount ?? 0)) <= 0) ?? [];
+    const invalidItems =
+      report.items?.filter((item) => parseFloat(String(item.amount ?? 0)) <= 0) ?? [];
     if (invalidItems.length > 0) {
       throw new BadRequestException(
-        `${invalidItems.length} item(s) have invalid amounts. All items must have an amount greater than zero before submission.`
+        `${invalidItems.length} item(s) have invalid amounts. All items must have an amount greater than zero before submission.`,
       );
     }
 
@@ -144,7 +181,7 @@ export class ReportsService {
   }
 
   async getOwnDashboardSummary(ownerId: string): Promise<ExpenseReportDashboardSummaryDto> {
-    const [activeDrafts, pendingApproval, totalProcessed] = await Promise.all([
+    const [draftCount, submittedCount, approvedCount, rejectedCount] = await Promise.all([
       this.expenseReportsRepository.count({
         ownerId,
         status: ExpenseReportStatus.DRAFT,
@@ -155,14 +192,24 @@ export class ReportsService {
       }),
       this.expenseReportsRepository.count({
         ownerId,
-        status: [ExpenseReportStatus.APPROVED, ExpenseReportStatus.REJECTED],
+        status: ExpenseReportStatus.APPROVED,
+      }),
+      this.expenseReportsRepository.count({
+        ownerId,
+        status: ExpenseReportStatus.REJECTED,
       }),
     ]);
 
     return {
-      activeDrafts,
-      pendingApproval,
-      totalProcessed,
+      // Legacy fields
+      activeDrafts: draftCount,
+      pendingApproval: submittedCount,
+      totalProcessed: approvedCount + rejectedCount,
+      // New detailed fields
+      draftCount,
+      submittedCount,
+      approvedCount,
+      rejectedCount,
     };
   }
 
@@ -185,6 +232,31 @@ export class ReportsService {
       pagination.pageSize,
       mapExpenseReportDetailResponse,
     );
+  }
+
+  async listAllReportsWithCursor(
+    cursor?: string,
+    limit = 50,
+    status?: ExpenseReportStatus,
+  ): Promise<ExpenseReportCursorResponseDto> {
+    const filters: { cursor?: string; limit: number; status?: ExpenseReportStatus } = {
+      limit,
+    };
+    if (cursor) {
+      filters.cursor = cursor;
+    }
+    if (status) {
+      filters.status = status;
+    }
+
+    const { items, nextCursor, hasMore } =
+      await this.expenseReportsRepository.listWithCursor(filters);
+
+    return {
+      items: items.map((report) => mapExpenseReportSummaryResponse(report)),
+      nextCursor,
+      hasMore,
+    };
   }
 
   async approveReport(reportId: string): Promise<ExpenseReportDetailResponseDto> {

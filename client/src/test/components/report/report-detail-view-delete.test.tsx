@@ -42,9 +42,7 @@ function buildItem(overrides = {}) {
   };
 }
 
-function buildProps(
-  overrides: Partial<ReportDetailOrganismProps> = {},
-): ReportDetailOrganismProps {
+function buildProps(overrides: Partial<ReportDetailOrganismProps> = {}): ReportDetailOrganismProps {
   return {
     report: buildReport(),
     reportTitle: 'Phu Quoc trip',
@@ -83,7 +81,7 @@ describe('ReportDetailView delete action', () => {
     const deleteButton = screen.getByRole('button', { name: /delete wework item/i });
 
     expect(deleteButton).toBeInTheDocument();
-    expect(deleteButton).toHaveClass('group-hover:bg-red-50');
+    expect(deleteButton).toHaveClass('hover:bg-red-50');
 
     fireEvent.click(deleteButton);
 
@@ -117,5 +115,46 @@ describe('ReportDetailView delete action', () => {
       'aria-busy',
       'true',
     );
+  });
+
+  it('shows the edit action for invalid draft items and hides the AI header', () => {
+    const onReviewItem = jest.fn();
+    const item = buildItem({ amount: 0, aiExtracted: true });
+
+    render(
+      <ReportDetailView
+        {...buildProps({
+          onReviewItem,
+          report: buildReport({ items: [item] }),
+        })}
+      />,
+    );
+
+    expect(screen.queryByText(/^AI$/i)).not.toBeInTheDocument();
+
+    const editButton = screen.getByRole('button', { name: /edit wework item/i });
+
+    expect(editButton).toBeInTheDocument();
+
+    fireEvent.click(editButton);
+
+    expect(onReviewItem).toHaveBeenCalledWith(item);
+  });
+
+  it('shows the neutral submission message when invalidItemCount is zero', () => {
+    render(
+      <ReportDetailView
+        {...buildProps({
+          canSubmitReport: true,
+          invalidItemCount: 0,
+          report: buildReport({ items: [buildItem({ aiStatus: 'PROCESSING', amount: null })] }),
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Finalize your report for submission.')).toBeInTheDocument();
+    expect(
+      screen.queryByText(/need[s]? a valid amount before submission/i),
+    ).not.toBeInTheDocument();
   });
 });
