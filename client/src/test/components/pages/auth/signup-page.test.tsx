@@ -19,7 +19,9 @@ jest.mock('@client/components/pages/auth/auth-page', () => ({
       {footer}
       {error && <p role="alert">{error}</p>}
       <form data-testid="signup-form" onSubmit={onSubmit}>
-        <button type="submit" disabled={loading}>Submit</button>
+        <button type="submit" disabled={loading}>
+          Submit
+        </button>
       </form>
     </div>
   ),
@@ -65,7 +67,7 @@ describe('SignupPage', () => {
     expect(link).toHaveAttribute('href', '/login');
   });
 
-  it('calls auth.signup with trimmed name/email and password on submit', async () => {
+  it('calls auth.signup with trimmed email and password on submit', async () => {
     const signup = jest.fn().mockResolvedValue({ user: { id: '1' } });
     mockUnauthenticated({ signup });
 
@@ -73,7 +75,7 @@ describe('SignupPage', () => {
     fireEvent.submit(screen.getByTestId('signup-form'));
 
     await waitFor(() => {
-      expect(signup).toHaveBeenCalledWith({ name: '', email: '', password: '' });
+      expect(signup).toHaveBeenCalledWith({ email: '', password: '' });
     });
   });
 
@@ -91,9 +93,9 @@ describe('SignupPage', () => {
   });
 
   it('shows error message when signup throws ApiClientError', async () => {
-    const signup = jest.fn().mockRejectedValue(
-      new ApiClientError('Email already in use', { status: 422 }),
-    );
+    const signup = jest
+      .fn()
+      .mockRejectedValue(new ApiClientError('Email already in use', { status: 422 }));
     mockUnauthenticated({ signup });
 
     render(<SignupPage />);

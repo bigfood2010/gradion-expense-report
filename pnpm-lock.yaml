@@ -98,6 +98,9 @@ importers:
       typeorm:
         specifier: ^0.3.20
         version: 0.3.28(ts-node@10.9.2(@types/node@24.12.2)(typescript@5.9.3))
+      uuidv7:
+        specifier: ^1.2.1
+        version: 1.2.1
     devDependencies:
       '@nestjs/cli':
         specifier: ^11.0.10
@@ -4447,6 +4450,10 @@ packages:
 
   uuid@11.1.0:
     resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
+    hasBin: true
+
+  uuidv7@1.2.1:
+    resolution: {integrity: sha512-4kPkK3/XTQW9Hbm4CaqfICn+kY9LJtDVEOfgsRRra/+n2Ofg4NqzRFceAkxvQ/Ud/6BpHOPzj8cirqM7TzTN5Q==}
     hasBin: true
 
   v8-compile-cache-lib@3.0.1:
@@ -8986,6 +8993,8 @@ snapshots:
   utils-merge@1.0.1: {}
 
   uuid@11.1.0: {}
+
+  uuidv7@1.2.1: {}
 
   v8-compile-cache-lib@3.0.1: {}
 

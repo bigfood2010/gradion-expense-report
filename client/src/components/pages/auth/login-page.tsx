@@ -12,7 +12,6 @@ export function LoginPage(): ReactElement {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState<AuthFormValues>({
-    name: '',
     email: '',
     password: '',
   });
@@ -70,16 +69,23 @@ export function LoginPage(): ReactElement {
             <button
               type="button"
               className="-mx-2 w-full cursor-pointer rounded px-2 py-0.5 text-left transition-colors hover:bg-black/5 active:bg-black/10"
-              onClick={() => fillCredentials('user@example.com', 'password')}
+              onClick={() => fillCredentials('david@openai.com', 'Password1!')}
             >
-              User: user@example.com / password
+              User 1: david@openai.com
             </button>
             <button
               type="button"
               className="-mx-2 w-full cursor-pointer rounded px-2 py-0.5 text-left transition-colors hover:bg-black/5 active:bg-black/10"
-              onClick={() => fillCredentials('admin@example.com', 'password')}
+              onClick={() => fillCredentials('sarah@openai.com', 'Password1!')}
             >
-              Admin: admin@example.com / password
+              User 2: sarah@openai.com
+            </button>
+            <button
+              type="button"
+              className="-mx-2 w-full cursor-pointer rounded px-2 py-0.5 text-left transition-colors hover:bg-black/5 active:bg-black/10"
+              onClick={() => fillCredentials('admin@openai.com', 'password1!')}
+            >
+              Admin: admin@openai.com
             </button>
           </div>
         </>

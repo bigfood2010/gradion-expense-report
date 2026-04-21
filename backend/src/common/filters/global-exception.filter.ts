@@ -5,6 +5,7 @@ import {
   type ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import type { ApiErrorResponseDto } from '@gradion/shared/common';
 import type { Response } from 'express';
@@ -18,6 +19,8 @@ type HttpExceptionResponse = string | object;
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(GlobalExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     if (host.getType() !== 'http') {
       throw exception;
@@ -27,6 +30,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request = context.getRequest<AppRequest>();
     const response = context.getResponse<Response>();
     const normalizedError = this.normalizeException(exception);
+
+    if (normalizedError.statusCode >= 500) {
+      this.logger.error(
+        `${request.method} ${request.url} → ${normalizedError.statusCode} ${normalizedError.code}`,
+        exception instanceof Error ? exception.stack : String(exception),
+      );
+    }
+
     const payload: ApiErrorResponseDto = {
       success: false,
       error: normalizedError,
@@ -67,13 +78,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       };
     }
 
-    const message =
-      exception instanceof Error ? exception.message : 'An unexpected error occurred.';
-
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       code: 'INTERNAL_SERVER_ERROR',
-      message,
+      message: 'An unexpected error occurred.',
     };
   }
 

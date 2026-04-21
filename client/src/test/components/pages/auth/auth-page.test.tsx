@@ -15,7 +15,12 @@ jest.mock('@client/components/templates/auth-template', () => ({
 
 jest.mock('@client/components/organisms/auth/auth-form', () => ({
   AuthForm: ({ mode, loading, error, onSubmit }: any) => (
-    <form data-testid="auth-form" data-mode={mode} data-loading={String(loading)} onSubmit={onSubmit}>
+    <form
+      data-testid="auth-form"
+      data-mode={mode}
+      data-loading={String(loading)}
+      onSubmit={onSubmit}
+    >
       {error && <p role="alert">{error}</p>}
       <button type="submit">Submit</button>
     </form>
@@ -29,7 +34,7 @@ const BASE_PROPS = {
   footer: <span data-testid="footer-content">footer text</span>,
   loading: false,
   error: null,
-  values: { name: '', email: '', password: '' },
+  values: { email: '', password: '' },
   onSubmit: jest.fn(),
   onFieldChange: jest.fn(),
 };

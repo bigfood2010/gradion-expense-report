@@ -40,6 +40,18 @@ describe('persistence typeorm options', () => {
     expect(options.logging).toBe(false);
   });
 
+  it('verifies postgres TLS certificates by default when ssl is enabled', () => {
+    const options = buildPersistenceDataSourceOptionsFromEnv({
+      DB_SSL: 'true',
+      DB_CA_CERT: '-----BEGIN CERTIFICATE-----\\nexample\\n-----END CERTIFICATE-----',
+    }) as Extract<DataSourceOptions, { type: 'postgres' }>;
+
+    expect(options.ssl).toEqual({
+      rejectUnauthorized: true,
+      ca: '-----BEGIN CERTIFICATE-----\nexample\n-----END CERTIFICATE-----',
+    });
+  });
+
   it('builds sql.js options when requested', () => {
     const options = buildPersistenceDataSourceOptionsFromEnv({
       DB_TYPE: 'sqljs',

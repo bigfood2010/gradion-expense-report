@@ -1,5 +1,6 @@
 import {
   keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -10,6 +11,7 @@ import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '@gradion/shared/common';
 import type {
   CreateExpenseReportRequestDto,
   ExpenseReportAdminListResponseDto,
+  ExpenseReportCursorResponseDto,
   ExpenseReportDashboardSummaryDto,
   ExpenseReportDetailResponseDto,
   ExpenseReportListResponseDto,
@@ -48,7 +50,7 @@ export interface UpdateExpenseReportInput {
 }
 
 async function invalidateReportScopes(queryClient: ReturnType<typeof useQueryClient>) {
-  await Promise.all([
+  await Promise.allSettled([
     queryClient.invalidateQueries({ queryKey: queryKeys.reports.all }),
     queryClient.invalidateQueries({ queryKey: queryKeys.admin.all }),
   ]);
@@ -78,6 +80,23 @@ export function useExpenseReportsQuery(scope: string, page: number = DEFAULT_PAG
       }) as Promise<ExpenseReportListResponseDto>,
     enabled,
     placeholderData: keepPreviousData,
+  });
+}
+
+const DEFAULT_CURSOR_LIMIT = 50;
+
+export function useExpenseReportsInfiniteQuery(scope: string, status?: string, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.reports.infinite(scope, status),
+    queryFn: async ({ pageParam }: { pageParam: string | null }) =>
+      apiClient.reports.listCursor(
+        pageParam ?? undefined,
+        DEFAULT_CURSOR_LIMIT,
+        status,
+      ) as Promise<ExpenseReportCursorResponseDto>,
+    initialPageParam: null,
+    getNextPageParam: (lastPage: ExpenseReportCursorResponseDto) => lastPage.nextCursor,
+    enabled,
   });
 }
 

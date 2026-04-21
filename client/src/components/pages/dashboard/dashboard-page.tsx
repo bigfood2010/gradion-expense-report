@@ -1,12 +1,12 @@
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Navigate, useNavigate } from '@tanstack/react-router';
 import { Button } from '@client/components/atoms/button';
-import { Pagination } from '@client/components/molecules/pagination';
 import { WorkspaceTemplate } from '@client/components/templates/workspace-template';
 import { DashboardSummaryGrid } from '@client/components/organisms/dashboard/dashboard-summary-grid';
 import { ReportList } from '@client/components/organisms/dashboard/report-list';
 import { useAuth } from '@client/lib/auth-context';
-import { useExpenseReportSummaryQuery, useExpenseReportsQuery } from '@client/lib/hooks';
+import { useExpenseReportSummaryQuery, useExpenseReportsInfiniteQuery } from '@client/lib/hooks';
+import { type ReportStatus } from '@gradion/shared/enums';
 import { motion } from 'framer-motion';
 
 export function DashboardPage(): ReactElement {
@@ -14,40 +14,84 @@ export function DashboardPage(): ReactElement {
   const navigate = useNavigate();
   const isAdmin = auth.user?.role === 'admin';
   const scope = auth.user?.id ?? 'me';
-  const [page, setPage] = useState(1);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  const reportsQuery = useExpenseReportsQuery(scope, page, auth.isAuthenticated && !isAdmin);
+  const [selectedStatus, setSelectedStatus] = useState<ReportStatus | null>(null);
+
+  const statusFilter = selectedStatus ?? undefined;
+
+  const reportsQuery = useExpenseReportsInfiniteQuery(
+    scope,
+    statusFilter,
+    auth.isAuthenticated && !isAdmin,
+  );
   const summaryQuery = useExpenseReportSummaryQuery(scope, auth.isAuthenticated && !isAdmin);
 
-  const reports = reportsQuery.data?.items ?? [];
-  const paginationMeta = reportsQuery.data?.meta ?? null;
-  const totalPages = paginationMeta?.totalPages ?? 0;
+  const reports = reportsQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const hasNextPage = reportsQuery.hasNextPage ?? false;
+  const isFetchingNextPage = reportsQuery.isFetchingNextPage ?? false;
 
   useEffect(() => {
-    setPage(1);
+    if (!hasNextPage || isFetchingNextPage || !loadMoreRef.current) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void reportsQuery.fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasNextPage, isFetchingNextPage, reportsQuery]);
+
+  useEffect(() => {
+    reportsQuery.refetch();
   }, [scope]);
 
-  // Only clamp when totalPages changes (e.g. after deletion/filtering).
-  // page is intentionally excluded — reading it from closure is safe here.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (totalPages > 0 && page > totalPages) {
-      setPage(totalPages);
+    if (reportsQuery.data) {
+      void reportsQuery.refetch();
     }
-  }, [totalPages]);
+  }, [selectedStatus]);
 
   if (isAdmin) {
     return <Navigate replace to={'/admin' as any} />;
   }
 
   const summary = summaryQuery.data ?? {
+    draftCount: 0,
+    submittedCount: 0,
+    approvedCount: 0,
+    rejectedCount: 0,
+    // Legacy fields
     activeDrafts: 0,
     pendingApproval: 0,
     totalProcessed: 0,
   };
 
+  const statusCounts = {
+    draft: summary.draftCount,
+    submitted: summary.submittedCount,
+    approved: summary.approvedCount,
+    rejected: summary.rejectedCount,
+    total:
+      summary.draftCount + summary.submittedCount + summary.approvedCount + summary.rejectedCount,
+  };
+
   const openNewReport = () => {
     void navigate({ to: '/reports/create' as any });
+  };
+
+  const handleStatusChange = (status: ReportStatus | null) => {
+    setSelectedStatus(status);
   };
 
   const actions = (
@@ -76,9 +120,13 @@ export function DashboardPage(): ReactElement {
       actions={actions}
       summary={
         <DashboardSummaryGrid
-          activeDrafts={summary.activeDrafts}
-          pendingApproval={summary.pendingApproval}
-          totalProcessed={summary.totalProcessed}
+          draftCount={statusCounts.draft}
+          submittedCount={statusCounts.submitted}
+          approvedCount={statusCounts.approved}
+          rejectedCount={statusCounts.rejected}
+          totalCount={statusCounts.total}
+          activeStatus={selectedStatus}
+          onStatusChange={handleStatusChange}
         />
       }
       wide
@@ -105,7 +153,11 @@ export function DashboardPage(): ReactElement {
           }}
           reports={reports}
         />
-        {!reportsQuery.error && <Pagination meta={paginationMeta} onPageChange={setPage} />}
+        <div ref={loadMoreRef} className="flex justify-center py-4">
+          {isFetchingNextPage ? (
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-black" />
+          ) : null}
+        </div>
       </div>
     </WorkspaceTemplate>
   );

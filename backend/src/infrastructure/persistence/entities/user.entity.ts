@@ -1,21 +1,28 @@
 import {
+  BeforeInsert,
   Column,
   CreateDateColumn,
   Entity,
   Index,
   OneToMany,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
+import { generateId } from '@backend/common';
 import { UserRole } from '@backend/modules/users/domain/user-role.enum';
 import { ExpenseReportEntity } from '@backend/infrastructure/persistence/entities/expense-report.entity';
 
 @Entity({ name: 'users' })
 @Index('users_email_unique', ['email'], { unique: true })
 export class UserEntity {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn({ type: 'uuid' })
   id!: string;
+
+  @BeforeInsert()
+  protected assignId(): void {
+    this.id ??= generateId();
+  }
 
   @Column({ type: 'varchar', length: 320 })
   email!: string;

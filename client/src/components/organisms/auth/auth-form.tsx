@@ -5,7 +5,6 @@ import { fadeInUp, staggerContainer } from '@client/lib/motion';
 export type AuthFormMode = 'login' | 'signup';
 
 export interface AuthFormValues {
-  readonly name: string;
   readonly email: string;
   readonly password: string;
 }
@@ -39,28 +38,6 @@ export function AuthForm({
       className="mt-6 flex flex-col gap-4 sm:mt-8 sm:gap-6"
       onSubmit={onSubmit}
     >
-      {isSignup && (
-        <motion.div variants={fadeInUp} className="flex flex-col">
-          <label
-            htmlFor="name"
-            className="mb-1 block text-[12px] uppercase tracking-[0.08em] text-muted-foreground sm:text-[13px]"
-          >
-            Name
-          </label>
-          <input
-            id="name"
-            name="name"
-            autoComplete="name"
-            placeholder="Your full name"
-            required
-            spellCheck={false}
-            value={values.name}
-            onChange={(event) => onFieldChange('name', event.target.value)}
-            className="auth-input w-full appearance-none border-0 border-b border-border bg-transparent px-0 py-3 text-[16px] text-foreground placeholder:text-[#A3A3A3] outline-none transition-colors duration-150 focus:border-border focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
-          />
-        </motion.div>
-      )}
-
       <motion.div variants={fadeInUp} className="flex flex-col">
         <label
           htmlFor="email"

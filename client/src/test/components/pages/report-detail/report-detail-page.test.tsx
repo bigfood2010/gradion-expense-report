@@ -148,9 +148,7 @@ describe('ReportDetailPage', () => {
     });
 
     it('shows loading skeleton (animate-pulse element) when isLoading=true', () => {
-      const { container } = render(
-        <ReportDetailPage {...defaultProps({ isLoading: true })} />,
-      );
+      const { container } = render(<ReportDetailPage {...defaultProps({ isLoading: true })} />);
       expect(container.querySelector('.animate-pulse')).toBeInTheDocument();
     });
 
@@ -215,13 +213,23 @@ describe('ReportDetailPage', () => {
 
   describe('Current user display in actions', () => {
     it('shows currentUser name in actions area', () => {
-      const currentUser = { id: faker.string.uuid(), email: faker.internet.email(), name: 'Alice Smith', role: 'user' as any };
+      const currentUser = {
+        id: faker.string.uuid(),
+        email: faker.internet.email(),
+        name: 'Alice Smith',
+        role: 'user' as any,
+      };
       render(<ReportDetailPage {...defaultProps({ currentUser })} />);
       expect(screen.getByTestId('actions')).toHaveTextContent('Alice Smith');
     });
 
     it('falls back to email when currentUser has no name', () => {
-      const currentUser = { id: faker.string.uuid(), email: 'alice@example.com', name: undefined, role: 'user' as any };
+      const currentUser = {
+        id: faker.string.uuid(),
+        email: 'alice@example.com',
+        name: undefined,
+        role: 'user' as any,
+      };
       render(<ReportDetailPage {...defaultProps({ currentUser })} />);
       expect(screen.getByTestId('actions')).toHaveTextContent('alice@example.com');
     });

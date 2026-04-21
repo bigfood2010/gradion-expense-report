@@ -31,7 +31,9 @@ function buildReportTotals(report: ExpenseReportEntity) {
   const items = report.items ?? [];
 
   return {
-    totalAmount: roundCurrency(items.reduce((sum, item) => sum + toMoneyValue(item.amount ?? 0), 0)),
+    totalAmount: roundCurrency(
+      items.reduce((sum, item) => sum + toMoneyValue(item.amount ?? 0), 0),
+    ),
     itemCount: items.length,
     currency: report.currency,
     canEdit:

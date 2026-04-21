@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 
 import { ReceiptStorageRepository } from './receipt-storage.repository';
 import { StoredReceipt, UploadReceiptInput } from './storage.types';
@@ -10,7 +11,7 @@ export class InMemoryReceiptStorageService extends ReceiptStorageRepository {
   private readonly metadata = new Map<string, StoredReceipt>();
 
   async uploadReceipt(input: UploadReceiptInput): Promise<StoredReceipt> {
-    const objectKey = `reports/${input.reportId}/${sanitizeFileName(input.originalName)}`;
+    const objectKey = `reports/${input.reportId}/${randomUUID()}-${sanitizeFileName(input.originalName)}`;
     const storedReceipt: StoredReceipt = {
       objectKey,
       size: input.size,

@@ -4,11 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
-import {
-  ApiResponseInterceptor,
-  GlobalExceptionFilter,
-  attachRequestContext,
-} from '@backend/common';
+import { attachRequestContext } from '@backend/common';
 import type { AppConfig } from '@backend/config';
 
 async function bootstrap(): Promise<void> {
@@ -40,8 +36,6 @@ async function bootstrap(): Promise<void> {
       },
     }),
   );
-  app.useGlobalFilters(new GlobalExceptionFilter());
-  app.useGlobalInterceptors(new ApiResponseInterceptor());
   app.enableShutdownHooks();
 
   await app.listen(appConfig.port);

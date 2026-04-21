@@ -10,10 +10,7 @@ const GENERIC_MERCHANT_VALUES = new Set([
   'scan',
 ]);
 
-export function normalizeExtractedMerchant(
-  merchant: unknown,
-  originalName: string,
-): string {
+export function normalizeExtractedMerchant(merchant: unknown, originalName: string): string {
   if (typeof merchant !== 'string') {
     return '';
   }

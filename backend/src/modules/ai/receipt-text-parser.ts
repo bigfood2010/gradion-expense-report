@@ -52,10 +52,7 @@ export function parseReceiptText(text: string, originalName: string): ReceiptExt
     .filter(Boolean);
   const amountSource = extractAmountSource(lines, normalizedText);
   const currency = extractCurrency(amountSource, normalizedText);
-  const merchant = normalizeExtractedMerchant(
-    buildMerchant(lines, normalizedText),
-    originalName,
-  );
+  const merchant = normalizeExtractedMerchant(buildMerchant(lines, normalizedText), originalName);
 
   return {
     merchant,
@@ -67,7 +64,10 @@ export function parseReceiptText(text: string, originalName: string): ReceiptExt
 }
 
 function normalizeText(text: string): string {
-  return text.replace(/\r/g, '\n').replace(/[ \t]+/g, ' ').trim();
+  return text
+    .replace(/\r/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .trim();
 }
 
 function buildMerchant(lines: string[], text: string): string {
@@ -109,7 +109,8 @@ function buildMerchant(lines: string[], text: string): string {
 function extractSellerMerchant(lines: string[], text: string): string {
   const soldByBlock = text.match(/\bsold by\b[\s\S]{0,80}?\n([^\n]+)/i)?.[1];
   if (soldByBlock) {
-    const beforeOrderNumber = soldByBlock.split(/\border number\b/i)[0]?.trim() ?? soldByBlock.trim();
+    const beforeOrderNumber =
+      soldByBlock.split(/\border number\b/i)[0]?.trim() ?? soldByBlock.trim();
     const uppercaseTokens = beforeOrderNumber.match(/\b[A-Z][A-Z0-9&.'-]{2,}\b/g);
 
     if (uppercaseTokens?.length) {
@@ -215,7 +216,10 @@ function isLikelyMerchant(value: string): boolean {
 
 function extractAmountSource(lines: string[], text: string): string {
   for (const label of LINE_VALUE_LABELS) {
-    const pattern = new RegExp(`\\b${escapeRegExp(label)}\\b(?:\\s*\\([^\\n]+\\))?\\s*[:\\-]?\\s*([^\\n]+)?`, 'i');
+    const pattern = new RegExp(
+      `\\b${escapeRegExp(label)}\\b(?:\\s*\\([^\\n]+\\))?\\s*[:\\-]?\\s*([^\\n]+)?`,
+      'i',
+    );
     const inlineMatch = text.match(pattern);
     const inlineValue = inlineMatch?.[1] ? findAmountToken(inlineMatch[1]) : null;
     if (inlineValue) {
@@ -336,7 +340,9 @@ function extractDate(lines: string[], text: string): string {
     return isoDate;
   }
 
-  const slashDate = text.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)?\b/i);
+  const slashDate = text.match(
+    /\b(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)?\b/i,
+  );
   if (slashDate?.[1] && slashDate?.[2] && slashDate?.[3]) {
     return `${slashDate[3]}-${slashDate[1].padStart(2, '0')}-${slashDate[2].padStart(2, '0')}`;
   }

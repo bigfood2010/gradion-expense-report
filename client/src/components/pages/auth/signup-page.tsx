@@ -12,7 +12,6 @@ export function SignupPage(): ReactElement {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState<AuthFormValues>({
-    name: '',
     email: '',
     password: '',
   });
@@ -34,7 +33,6 @@ export function SignupPage(): ReactElement {
 
     try {
       await auth.signup({
-        name: values.name.trim(),
         email: values.email.trim(),
         password: values.password,
       });

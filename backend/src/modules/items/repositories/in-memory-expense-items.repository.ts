@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
 
+import { generateId } from '@backend/common';
 import {
   CreateExpenseItemInput,
   ExpenseItemRecord,
@@ -15,7 +15,7 @@ export class InMemoryExpenseItemsRepository extends ExpenseItemsRepository {
   async create(input: CreateExpenseItemInput): Promise<ExpenseItemRecord> {
     const now = new Date();
     const item: ExpenseItemRecord = {
-      id: randomUUID(),
+      id: generateId(),
       reportId: input.reportId,
       amount: input.amount ?? null,
       merchant: input.merchant ?? null,

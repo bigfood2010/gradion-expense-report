@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 
@@ -21,11 +22,14 @@ import {
   REPORT_STATUS,
   ReportStateRecord,
 } from '@backend/modules/items/items.types';
+import { assertValidReceiptFile } from '@backend/modules/items/receipt-upload.validation';
 import { ExpenseItemsRepository } from '@backend/modules/items/repositories/expense-items.repository';
 import { ReportStateRepository } from '@backend/modules/items/repositories/report-state.repository';
 
 @Injectable()
 export class ItemsService {
+  private readonly logger = new Logger(ItemsService.name);
+
   constructor(
     private readonly expenseItemsRepository: ExpenseItemsRepository,
     private readonly reportStateRepository: ReportStateRepository,
@@ -56,6 +60,7 @@ export class ItemsService {
     if (!file) {
       throw new BadRequestException('A receipt file is required.');
     }
+    assertValidReceiptFile(file);
 
     await this.assertReportAllowsMutation(reportId, userId);
 
@@ -68,8 +73,7 @@ export class ItemsService {
     });
 
     const hasManualData =
-      initialData != null &&
-      Object.values(initialData).some((v) => v !== undefined && v !== null);
+      initialData != null && Object.values(initialData).some((v) => v !== undefined && v !== null);
 
     const item = await this.expenseItemsRepository.create({
       reportId,
@@ -83,7 +87,10 @@ export class ItemsService {
     });
 
     if (!hasManualData) {
+      this.logger.log(`Dispatching AI extraction for item ${item.id} (report ${reportId})`);
       await this.extractionDispatcherRepository.dispatch(item.id);
+    } else {
+      this.logger.log(`Created item ${item.id} with manual data — skipping extraction`);
     }
 
     return {
@@ -142,6 +149,7 @@ export class ItemsService {
     await this.expenseItemsRepository.delete(itemId);
 
     if (existing.receiptObjectKey) {
+      this.logger.log(`Deleting stored receipt for item ${itemId}: ${existing.receiptObjectKey}`);
       await this.receiptStorageRepository.deleteReceipt(existing.receiptObjectKey);
     }
   }

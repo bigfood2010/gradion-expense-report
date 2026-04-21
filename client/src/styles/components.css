@@ -475,6 +475,11 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.workspace-template__summary--columns-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 100%;
+}
+
 .workspace-template__body {
   display: grid;
   gap: var(--space-6);

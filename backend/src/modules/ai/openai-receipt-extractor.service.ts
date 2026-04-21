@@ -11,7 +11,11 @@ import { normalizeExtractedMerchant } from './merchant-normalization';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/';
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const MAX_TEXT_CHARS = 4000;
-const MAX_TOKENS = 256;
+// gemini-2.5-flash uses ~200-300 thinking tokens internally before emitting the
+// visible response.  The previous value of 256 left fewer than 20 tokens for the
+// actual JSON, causing truncated output and silent parse failures.  1024 is the
+// safe lower-bound: thinking (~241) + JSON payload (~66) + headroom.
+const MAX_TOKENS = 1024;
 
 const SYSTEM_PROMPT = `You are an expert receipt understanding model for expense management.
 
@@ -93,17 +97,31 @@ export class OpenAIReceiptExtractorService extends ReceiptExtractorRepository {
       ],
       temperature: 0,
       max_tokens: MAX_TOKENS,
-      response_format: { type: 'json_object' },
     });
 
-    const raw = response.choices[0]?.message?.content ?? '{}';
-    this.logger.debug(`Gemini 2.5 Flash extraction result: ${raw}`);
+    const choice = response.choices[0];
+    const raw = choice?.message?.content;
 
-    return parseResult(raw, input.originalName);
+    if (!raw) {
+      throw new Error(`Gemini returned empty response for ${input.originalName}`);
+    }
+
+    if (choice.finish_reason === 'length') {
+      throw new Error(
+        `Gemini response was truncated (finish_reason=length) for ${input.originalName}. ` +
+          `Increase MAX_TOKENS or reduce prompt size.`,
+      );
+    }
+
+    this.logger.debug(
+      `Gemini raw extraction complete for ${input.originalName} (${raw.length} chars)`,
+    );
+
+    return parseResult(raw, input.originalName, this.logger);
   }
 }
 
-function parseResult(raw: string, originalName: string): ReceiptExtractionResult {
+function parseResult(raw: string, originalName: string, logger: Logger): ReceiptExtractionResult {
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
 
@@ -118,14 +136,12 @@ function parseResult(raw: string, originalName: string): ReceiptExtractionResult
         : null;
 
     return { merchant, amount, currency, date, description };
-  } catch {
-    return {
-      merchant: '',
-      amount: '0.00',
-      currency: 'USD',
-      date: '',
-      description: null,
-    };
+  } catch (error) {
+    logger.error(
+      `Failed to parse extraction result for ${originalName} (${raw.length} chars)`,
+      error instanceof Error ? error.stack : String(error),
+    );
+    throw new Error(`Extraction result was not valid JSON for ${originalName}.`);
   }
 }
 

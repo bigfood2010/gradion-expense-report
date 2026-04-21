@@ -1,5 +1,6 @@
 import {
   AfterLoad,
+  BeforeInsert,
   Column,
   CreateDateColumn,
   Entity,
@@ -7,10 +8,11 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
+import { generateId } from '@backend/common';
 import { ExpenseItemEntity } from '@backend/infrastructure/persistence/entities/expense-item.entity';
 import { ExpenseReportStatus } from '@backend/modules/reports/reports.types';
 import { UserEntity } from '@backend/infrastructure/persistence/entities/user.entity';
@@ -18,8 +20,13 @@ import { UserEntity } from '@backend/infrastructure/persistence/entities/user.en
 @Entity({ name: 'expense_reports' })
 @Index('expense_reports_user_status_idx', ['userId', 'status'])
 export class ExpenseReportEntity {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn({ type: 'uuid' })
   id!: string;
+
+  @BeforeInsert()
+  protected assignId(): void {
+    this.id ??= generateId();
+  }
 
   @Column({ name: 'user_id', type: 'uuid' })
   userId!: string;

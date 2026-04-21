@@ -1,4 +1,13 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Res, UnauthorizedException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Res,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
@@ -32,7 +41,8 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {
-    const jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN') ?? AUTH_DEFAULT_JWT_EXPIRES_IN;
+    const jwtExpiresIn =
+      this.configService.get<string>('JWT_EXPIRES_IN') ?? AUTH_DEFAULT_JWT_EXPIRES_IN;
     this.cookieMaxAgeMs = ms(jwtExpiresIn as ms.StringValue);
   }
 
@@ -44,7 +54,11 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<AuthResponseDto> {
     const { accessToken, user } = await this.authService.signup(payload);
-    response.cookie(AUTH_COOKIE_NAME, accessToken, cookieOptions(this.isProduction, this.cookieMaxAgeMs));
+    response.cookie(
+      AUTH_COOKIE_NAME,
+      accessToken,
+      cookieOptions(this.isProduction, this.cookieMaxAgeMs),
+    );
     return { user };
   }
 
@@ -56,7 +70,11 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<AuthResponseDto> {
     const { accessToken, user } = await this.authService.login(payload);
-    response.cookie(AUTH_COOKIE_NAME, accessToken, cookieOptions(this.isProduction, this.cookieMaxAgeMs));
+    response.cookie(
+      AUTH_COOKIE_NAME,
+      accessToken,
+      cookieOptions(this.isProduction, this.cookieMaxAgeMs),
+    );
     return { user };
   }
 

@@ -13,7 +13,7 @@ export interface CreateExpenseItemRequestDto {
   reportId: Uuid;
   merchant?: string;
   description?: string | null;
-  amount?: number;
+  amount?: string;
   currency?: CurrencyCode;
   date?: IsoDateString;
   receiptUrl?: string | null;
@@ -24,7 +24,7 @@ export interface CreateExpenseItemRequestDto {
 export interface UpdateExpenseItemRequestDto {
   merchant?: string;
   description?: string | null;
-  amount?: number;
+  amount?: string;
   currency?: CurrencyCode;
   date?: IsoDateString;
   receiptUrl?: string | null;

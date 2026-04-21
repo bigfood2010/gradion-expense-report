@@ -7,6 +7,7 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type {
   AuthSessionDto,
   AuthUserDto,
@@ -33,6 +34,7 @@ export interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const queryClient = useQueryClient();
   const [session, setSessionState] = useState<AuthSessionDto | null>(() => readStoredAuthSession());
 
   useEffect(() => {
@@ -77,7 +79,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     });
     clearStoredAuthSession();
     setSessionState(null);
-  }, []);
+    queryClient.clear();
+  }, [queryClient]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -10,17 +10,17 @@ export class AddUuidDefaultsToPrimaryKeys1775845415682 implements MigrationInter
 
     await queryRunner.query(`
       ALTER TABLE "users"
-      ALTER COLUMN "id" SET DEFAULT uuid_generate_v4()
+      ALTER COLUMN "id" SET DEFAULT gen_random_uuid()
     `);
 
     await queryRunner.query(`
       ALTER TABLE "expense_reports"
-      ALTER COLUMN "id" SET DEFAULT uuid_generate_v4()
+      ALTER COLUMN "id" SET DEFAULT gen_random_uuid()
     `);
 
     await queryRunner.query(`
       ALTER TABLE "expense_items"
-      ALTER COLUMN "id" SET DEFAULT uuid_generate_v4()
+      ALTER COLUMN "id" SET DEFAULT gen_random_uuid()
     `);
   }
 

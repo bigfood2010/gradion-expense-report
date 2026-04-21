@@ -1,15 +1,17 @@
 import { AI_STATUSES, type AIStatus } from '@gradion/shared/enums';
 import {
+  BeforeInsert,
   Column,
   CreateDateColumn,
   Entity,
   Index,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
+import { generateId } from '@backend/common';
 import { ExpenseReportEntity } from '@backend/infrastructure/persistence/entities/expense-report.entity';
 import { decimalColumnTransformer, nullableDecimalColumnTransformer } from './column-transformers';
 
@@ -17,8 +19,13 @@ import { decimalColumnTransformer, nullableDecimalColumnTransformer } from './co
 @Index('expense_items_report_idx', ['reportId'])
 @Index('expense_items_report_ai_status_idx', ['reportId', 'aiStatus'])
 export class ExpenseItemEntity {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn({ type: 'uuid' })
   id!: string;
+
+  @BeforeInsert()
+  protected assignId(): void {
+    this.id ??= generateId();
+  }
 
   @Column({ name: 'report_id', type: 'uuid' })
   reportId!: string;
