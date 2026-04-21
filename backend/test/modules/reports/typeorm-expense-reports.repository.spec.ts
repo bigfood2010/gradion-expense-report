@@ -17,7 +17,7 @@ class QueryBuilderMock {
 }
 
 describe('TypeOrmExpenseReportsRepository', () => {
-  it('scopes cursor pagination by owner and status with a stable tie breaker', async () => {
+  it('scopes cursor pagination by owner and visible statuses with a stable tie breaker', async () => {
     const listQueryBuilder = new QueryBuilderMock();
     const cursorQueryBuilder = new QueryBuilderMock();
     const cursorCreatedAt = new Date('2026-04-10T00:00:00.000Z');
@@ -38,7 +38,11 @@ describe('TypeOrmExpenseReportsRepository', () => {
       cursor: 'cursor-report',
       limit: 1,
       ownerId: 'owner-1',
-      status: ExpenseReportStatus.SUBMITTED,
+      status: [
+        ExpenseReportStatus.SUBMITTED,
+        ExpenseReportStatus.APPROVED,
+        ExpenseReportStatus.REJECTED,
+      ],
     });
 
     expect(cursorQueryBuilder.where).toHaveBeenCalledWith('report.id = :cursor', {
@@ -47,8 +51,12 @@ describe('TypeOrmExpenseReportsRepository', () => {
     expect(cursorQueryBuilder.andWhere).toHaveBeenCalledWith('report.userId = :ownerId', {
       ownerId: 'owner-1',
     });
-    expect(cursorQueryBuilder.andWhere).toHaveBeenCalledWith('report.status = :status', {
-      status: ExpenseReportStatus.SUBMITTED,
+    expect(cursorQueryBuilder.andWhere).toHaveBeenCalledWith('report.status IN (:...statuses)', {
+      statuses: [
+        ExpenseReportStatus.SUBMITTED,
+        ExpenseReportStatus.APPROVED,
+        ExpenseReportStatus.REJECTED,
+      ],
     });
     expect(listQueryBuilder.andWhere).toHaveBeenCalledWith(
       expect.stringContaining('report.createdAt < :cursorCreatedAt'),

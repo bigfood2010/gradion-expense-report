@@ -1,9 +1,12 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
+import { ListExpenseReportsQueryDto } from '@backend/modules/reports/dto/list-expense-reports.query.dto';
 import { UpdateExpenseReportDto } from '@backend/modules/reports/dto/update-expense-report.dto';
 import { ExpenseItemReferenceEntity } from '@backend/modules/reports/entities/expense-item-reference.entity';
 import { ExpenseReportEntity } from '@backend/modules/reports/entities/expense-report.entity';
 import {
+  ExpenseReportsCursorFilters,
+  ExpenseReportsCursorResult,
   ExpenseReportsListFilters,
   ExpenseReportsListResult,
   ExpenseReportsPaginationFilters,
@@ -15,11 +18,15 @@ import { UserRole } from '@backend/modules/users/domain/user-role.enum';
 import { DEFAULT_PAGE_SIZE, normalizePagination } from '@gradion/shared/common';
 
 class InMemoryExpenseReportsRepository extends ExpenseReportsRepository {
+  public lastCursorFilters?: ExpenseReportsCursorFilters;
+  public lastListFilters?: ExpenseReportsPaginationFilters;
+
   constructor(private readonly reports: ExpenseReportEntity[]) {
     super();
   }
 
   async list(filters: ExpenseReportsPaginationFilters = {}): Promise<ExpenseReportsListResult> {
+    this.lastListFilters = filters;
     const matchedReports = this.reports.filter((report) => matchesFilters(report, filters));
     const pagination = normalizePagination(filters, {
       defaultPageSize: DEFAULT_PAGE_SIZE,
@@ -34,6 +41,19 @@ class InMemoryExpenseReportsRepository extends ExpenseReportsRepository {
 
   async count(filters: ExpenseReportsListFilters = {}): Promise<number> {
     return this.reports.filter((report) => matchesFilters(report, filters)).length;
+  }
+
+  async listWithCursor(
+    filters: ExpenseReportsCursorFilters = {},
+  ): Promise<ExpenseReportsCursorResult> {
+    this.lastCursorFilters = filters;
+    const matchedReports = this.reports.filter((report) => matchesFilters(report, filters));
+
+    return {
+      items: matchedReports,
+      nextCursor: null,
+      hasMore: false,
+    };
   }
 
   async findById(reportId: string): Promise<ExpenseReportEntity | null> {
@@ -207,9 +227,65 @@ describe('ReportsService', () => {
 
     await expect(service.getOwnDashboardSummary('user-1')).resolves.toEqual({
       activeDrafts: 2,
+      approvedCount: 1,
+      draftCount: 2,
       pendingApproval: 2,
+      rejectedCount: 1,
+      submittedCount: 2,
       totalProcessed: 2,
+    } satisfies Record<string, number>);
+  });
+
+  it('excludes draft reports from the admin list by default', async () => {
+    const repository = new InMemoryExpenseReportsRepository([
+      makeReport({ id: 'draft-1', status: ExpenseReportStatus.DRAFT }),
+      makeReport({ id: 'submitted-1', status: ExpenseReportStatus.SUBMITTED }),
+      makeReport({ id: 'approved-1', status: ExpenseReportStatus.APPROVED }),
+      makeReport({ id: 'rejected-1', status: ExpenseReportStatus.REJECTED }),
+    ]);
+    const service = new ReportsService(repository);
+
+    const response = await service.listAllReports({
+      page: 1,
+      pageSize: 20,
+    } satisfies ListExpenseReportsQueryDto);
+
+    expect(repository.lastListFilters?.status).toEqual([
+      ExpenseReportStatus.SUBMITTED,
+      ExpenseReportStatus.APPROVED,
+      ExpenseReportStatus.REJECTED,
+    ]);
+    expect(response.meta).toMatchObject({
+      totalItems: 3,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
     });
+    expect(response.items.map((report) => report.status)).toEqual([
+      ExpenseReportStatus.SUBMITTED,
+      ExpenseReportStatus.APPROVED,
+      ExpenseReportStatus.REJECTED,
+    ]);
+  });
+
+  it('excludes draft reports from the admin cursor list by default', async () => {
+    const repository = new InMemoryExpenseReportsRepository([
+      makeReport({ id: 'draft-1', status: ExpenseReportStatus.DRAFT }),
+      makeReport({ id: 'submitted-1', status: ExpenseReportStatus.SUBMITTED }),
+    ]);
+    const service = new ReportsService(repository);
+
+    const response = await service.listAllReportsWithCursor(undefined, 50);
+
+    expect(repository.lastCursorFilters?.status).toEqual([
+      ExpenseReportStatus.SUBMITTED,
+      ExpenseReportStatus.APPROVED,
+      ExpenseReportStatus.REJECTED,
+    ]);
+    expect(response.items).toHaveLength(1);
+    expect(response.items[0]?.status).toBe(ExpenseReportStatus.SUBMITTED);
+    expect(response.nextCursor).toBeNull();
+    expect(response.hasMore).toBe(false);
   });
 
   it('refuses to delete non-draft reports', async () => {

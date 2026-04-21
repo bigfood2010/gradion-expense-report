@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { AdminDashboardPage } from '../../components/pages/admin/admin-dashboard-page';
 import {
@@ -47,25 +47,35 @@ function AdminRoute() {
     return <Navigate to="/" />;
   }
 
-  const handleApproveReport = async (reportId: string) => {
-    setApprovingReportId(reportId);
+  const handleApproveReport = useCallback(
+    async (reportId: string) => {
+      setApprovingReportId(reportId);
 
-    try {
-      await approveReportMutation.mutateAsync({ reportId });
-    } finally {
-      setApprovingReportId(null);
-    }
-  };
+      try {
+        await approveReportMutation.mutateAsync({ reportId });
+      } finally {
+        setApprovingReportId(null);
+      }
+    },
+    [approveReportMutation],
+  );
 
-  const handleRejectReport = async (reportId: string) => {
-    setRejectingReportId(reportId);
+  const handleRejectReport = useCallback(
+    async (reportId: string) => {
+      setRejectingReportId(reportId);
 
-    try {
-      await rejectReportMutation.mutateAsync({ reportId });
-    } finally {
-      setRejectingReportId(null);
-    }
-  };
+      try {
+        await rejectReportMutation.mutateAsync({ reportId });
+      } finally {
+        setRejectingReportId(null);
+      }
+    },
+    [rejectReportMutation],
+  );
+
+  const handleToggleReport = useCallback((reportId: string) => {
+    setActiveReportId((current) => (current === reportId ? null : reportId));
+  }, []);
 
   return (
     <AdminDashboardPage
@@ -78,9 +88,7 @@ function AdminRoute() {
       onPageChange={setPage}
       onRejectReport={handleRejectReport}
       onSignOut={signOut}
-      onToggleReport={(reportId) =>
-        setActiveReportId((current) => (current === reportId ? null : reportId))
-      }
+      onToggleReport={handleToggleReport}
       rejectingReportId={rejectingReportId}
       reports={reports}
     />

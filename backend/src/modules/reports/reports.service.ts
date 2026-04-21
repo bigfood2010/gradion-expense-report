@@ -32,6 +32,28 @@ export class ReportsService {
     private readonly expenseReportsRepository: ExpenseReportsRepository,
   ) {}
 
+  private getAdminVisibleStatuses(): readonly ExpenseReportStatus[] {
+    return [
+      ExpenseReportStatus.SUBMITTED,
+      ExpenseReportStatus.APPROVED,
+      ExpenseReportStatus.REJECTED,
+    ];
+  }
+
+  private getAdminStatusFilter(
+    status?: ExpenseReportStatus,
+  ): ExpenseReportStatus | readonly ExpenseReportStatus[] {
+    if (!status) {
+      return this.getAdminVisibleStatuses();
+    }
+
+    if (status === ExpenseReportStatus.DRAFT) {
+      return [];
+    }
+
+    return status;
+  }
+
   async listOwnReports(
     ownerId: string,
     query: ListExpenseReportsQueryDto,
@@ -221,7 +243,7 @@ export class ReportsService {
       maxPageSize: DEFAULT_PAGE_SIZE,
     });
     const { items, totalItems } = await this.expenseReportsRepository.list({
-      ...(query.status !== undefined && { status: query.status }),
+      status: this.getAdminStatusFilter(query.status),
       ...pagination,
     });
 
@@ -239,14 +261,16 @@ export class ReportsService {
     limit = 50,
     status?: ExpenseReportStatus,
   ): Promise<ExpenseReportCursorResponseDto> {
-    const filters: { cursor?: string; limit: number; status?: ExpenseReportStatus } = {
+    const filters: {
+      cursor?: string;
+      limit: number;
+      status?: ExpenseReportStatus | readonly ExpenseReportStatus[];
+    } = {
       limit,
+      status: this.getAdminStatusFilter(status),
     };
     if (cursor) {
       filters.cursor = cursor;
-    }
-    if (status) {
-      filters.status = status;
     }
 
     const { items, nextCursor, hasMore } =
